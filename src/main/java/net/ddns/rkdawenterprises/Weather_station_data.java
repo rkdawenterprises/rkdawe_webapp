@@ -21,8 +21,6 @@ import com.google.gson.GsonBuilder;
 
 import org.json.JSONObject;
 
-import net.ddns.rkdawenterprises.Find.DISCOVERY;
-
 @WebServlet( name = "Weather_station_data",
              description = "Returns weather data",
              urlPatterns = { "/weather_station_data" } )
@@ -33,15 +31,13 @@ public class Weather_station_data extends HttpServlet
                           HttpServletResponse response )
             throws ServletException, IOException
     {
-        DISCOVERY discovery = (DISCOVERY)getServletContext().getAttribute( "identity" );
-
         Weather_data weather_data;
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
         {
             try
             {
-                weather_data = get_weather_data( discovery );
+                weather_data = get_weather_data();
 
                 System.out.printf( "Weather data aquired @ %s%n",
                                    weather_data.time );
@@ -80,36 +76,5 @@ public class Weather_station_data extends HttpServlet
         Utilities.reload_application( getServletContext() );
 
         throw new ServletException( "Failed to get weather data" );
-    }
-
-    /**
-     * Gets the weather data with a pre-connect and post-disconnect to the given
-     * weather station.
-     * 
-     * @param discovery The weather station to obtain the data from.
-     * 
-     * @return The weather data.
-     * 
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    public static Weather_data get_weather_data( DISCOVERY discovery ) throws IOException, InterruptedException
-    {
-        SocketAddress socketAddress = new InetSocketAddress( discovery.host,
-                                                             discovery.port );
-        try( Socket socket = new Socket() )
-        {
-            socket.connect( socketAddress,
-                            (int)Utilities.DEFAULT_NETWORK_TIMEOUT.toMillis() );
-            try( DataOutputStream out = new DataOutputStream( socket.getOutputStream() );
-                    DataInputStream in = new DataInputStream( new BufferedInputStream( socket.getInputStream() ) ); )
-            {
-                socket.setSoTimeout( (int)Utilities.DEFAULT_NETWORK_TIMEOUT.toMillis() );
-                Weather_data weather_data = Commands.get_weather_data( in,
-                                                                       out );
-                weather_data.DID = discovery.DID;
-                return weather_data;
-            }
-        }
     }
 }

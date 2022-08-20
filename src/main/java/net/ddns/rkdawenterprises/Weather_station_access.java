@@ -32,7 +32,9 @@ public final class Weather_station_access
 
     private DISCOVERY m_discovery = null;
 
-    private Weather_station_access() {}
+    private Weather_station_access()
+    {
+    }
 
     public static Weather_station_access get_instance()
     {
@@ -49,9 +51,9 @@ public final class Weather_station_access
     {
         synchronized( m_discovery )
         {
-            find();
-            test_verify();
-            verify_update_time();
+            find( m_discovery );
+            test_verify( m_discovery );
+            verify_update_time( m_discovery );
         }
     }
 
@@ -68,6 +70,7 @@ public final class Weather_station_access
 
     /**
      * Finds a weather station. Assumes there is only one.
+     * @param m_discovery2
      * 
      * @param shutdown
      *
@@ -78,8 +81,7 @@ public final class Weather_station_access
      * @throws UnknownHostException
      * @throws IOException
      */
-    private void find()
-            throws RuntimeException, SocketException, UnknownHostException, IOException
+    private void find( DISCOVERY discovery ) throws RuntimeException, SocketException, UnknownHostException, IOException
     {
         int port = 22222;
         byte[] discovery_bytes = "discoverwlip".getBytes( StandardCharsets.US_ASCII );
@@ -134,16 +136,16 @@ public final class Weather_station_access
                                                 0 ) );
             String device_DID = new String( string_builder );
 
-            m_discovery.host = receive_datagram_packet.getAddress()
-                                                    .getHostAddress();
-            m_discovery.port = receive_datagram_packet.getPort();
-            m_discovery.DID = device_DID;
-            m_discovery.discovery_data = discovery_bytes;
+            discovery.host = receive_datagram_packet.getAddress()
+                                                      .getHostAddress();
+            discovery.port = receive_datagram_packet.getPort();
+            discovery.DID = device_DID;
+            discovery.discovery_data = discovery_bytes;
 
             System.out.printf( "Found weather station at %s:%d, ID=%s.%n",
-                               m_discovery.host,
-                               m_discovery.port,
-                               m_discovery.DID );
+                               discovery.host,
+                               discovery.port,
+                               discovery.DID );
 
             return;
         }
@@ -152,15 +154,15 @@ public final class Weather_station_access
         throw new RuntimeException( "Could not find a weather station" );
     }
 
-    private void test_verify()
+    private void test_verify( DISCOVERY discovery )
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
         {
             try
             {
-                SocketAddress socketAddress = new InetSocketAddress( m_discovery.host,
-                                                                     m_discovery.port );
+                SocketAddress socketAddress = new InetSocketAddress( discovery.host,
+                                                                     discovery.port );
                 try( Socket socket = new Socket() )
                 {
                     socket.connect( socketAddress,
@@ -191,15 +193,15 @@ public final class Weather_station_access
         throw new RuntimeException( "Could not configure weather station" );
     }
 
-    private void verify_update_time()
+    private void verify_update_time( DISCOVERY discovery )
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
         {
             try
             {
-                SocketAddress socketAddress = new InetSocketAddress( m_discovery.host,
-                                                                     m_discovery.port );
+                SocketAddress socketAddress = new InetSocketAddress( discovery.host,
+                                                                     discovery.port );
                 try( Socket socket = new Socket() )
                 {
                     socket.connect( socketAddress,
@@ -231,6 +233,37 @@ public final class Weather_station_access
     }
 
     /**
+     * Gets the weather data with a pre-connect and post-disconnect to the given
+     * weather station.
+     * 
+     * @param discovery The weather station to obtain the data from.
+     * 
+     * @return The weather data.
+     * 
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private Weather_data get_weather_data() throws IOException, InterruptedException
+    {
+        SocketAddress socketAddress = new InetSocketAddress( discovery.host,
+                                                             discovery.port );
+        try( Socket socket = new Socket() )
+        {
+            socket.connect( socketAddress,
+                            (int)Utilities.DEFAULT_NETWORK_TIMEOUT.toMillis() );
+            try( DataOutputStream out = new DataOutputStream( socket.getOutputStream() );
+                    DataInputStream in = new DataInputStream( new BufferedInputStream( socket.getInputStream() ) ); )
+            {
+                socket.setSoTimeout( (int)Utilities.DEFAULT_NETWORK_TIMEOUT.toMillis() );
+                Weather_data weather_data = Commands.get_weather_data( in,
+                                                                       out );
+                weather_data.DID = discovery.DID;
+                return weather_data;
+            }
+        }
+    }
+
+    /**
      * Get various tests and information queries from the station.
      * 
      * @param in  Active inbound stream from weather station.
@@ -240,31 +273,31 @@ public final class Weather_station_access
      * @throws InterruptedException
      */
     private void test_verify( DataInputStream in,
-                                     DataOutputStream out )
+                              DataOutputStream out )
             throws IOException, InterruptedException
     {
         wake( in,
-                       out );
+              out );
         test( in,
-                       out );
+              out );
         wrd( in,
-                      out );
+             out );
         rxcheck( in,
-                          out );
+                 out );
         rxtest( in,
-                         out );
+                out );
         ver( in,
-                      out );
+             out );
         nver( in,
-                       out );
+              out );
     }
 
     private void verify_update_time( DataInputStream in,
-                                            DataOutputStream out )
+                                     DataOutputStream out )
             throws UnknownHostException, IOException, InterruptedException
     {
-        Commands.wake( in,
-                       out );
+        wake( in,
+              out );
 
         configure_time( in,
                         out );
@@ -289,7 +322,7 @@ public final class Weather_station_access
     }
 
     private Duration get_time_difference( DataInputStream in,
-                                                 DataOutputStream out )
+                                          DataOutputStream out )
             throws IOException
     {
         ZonedDateTime system_now = ZonedDateTime.now();
@@ -306,11 +339,11 @@ public final class Weather_station_access
         return difference;
     }
 
-    private Commands.tm get_local_tm()
+    private tm get_local_tm()
     {
         ZonedDateTime system_now = ZonedDateTime.now();
 
-        Commands.tm local_tm = new Commands.tm();
+        tm local_tm = new tm();
         local_tm.tm_gmtoff = system_now.getOffset()
                                        .getTotalSeconds();
         local_tm.tm_zone = system_now.getZone()
@@ -333,13 +366,13 @@ public final class Weather_station_access
     }
 
     private ZonedDateTime get_station_time( DataInputStream in,
-                                                   DataOutputStream out )
+                                            DataOutputStream out )
             throws IOException
     {
-        Commands.tm station_now = new Commands.tm();
-        Commands.get_time( in,
-                           out,
-                           station_now );
+        tm station_now = new tm();
+        get_time( in,
+                  out,
+                  station_now );
         double offset = (double)station_now.tm_gmtoff / 3600;
 
         String time_string = String.format( "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d[%s]",
@@ -357,10 +390,10 @@ public final class Weather_station_access
     }
 
     private void configure_time( DataInputStream in,
-                                        DataOutputStream out )
+                                 DataOutputStream out )
             throws UnknownHostException, IOException, InterruptedException
     {
-        Commands.tm system_now = get_local_tm();
+        tm system_now = get_local_tm();
 
         EEPROM.set_MANUAL_OR_AUTO( in,
                                    out,
@@ -375,10 +408,10 @@ public final class Weather_station_access
                                out,
                                system_now.tm_gmtoff );
 
-        Commands.tm station_now = new Commands.tm();
-        Commands.get_time( in,
-                           out,
-                           station_now );
+        tm station_now = new tm();
+        get_time( in,
+                  out,
+                  station_now );
 
         // System.out.printf( "System time = %d-%d-%d %02d:%02d:%02d %s(%.1f) %s%n",
         // system_now.tm_year + 1900,
@@ -404,7 +437,7 @@ public final class Weather_station_access
     }
 
     private void synchronize_time( DataInputStream in,
-                                          DataOutputStream out )
+                                   DataOutputStream out )
             throws IOException
     {
         System.out.printf( "System time and Station time differ by %s or more, so updating the station time...%n",
@@ -412,9 +445,9 @@ public final class Weather_station_access
 
         ZonedDateTime system_now = ZonedDateTime.now();
 
-        Commands.set_time( in,
-                           out,
-                           system_now );
+        set_time( in,
+                  out,
+                  system_now );
     }
 
     /**
