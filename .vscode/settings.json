@@ -1,0 +1,8 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.format.settings.url": "file:.vscode/eclipse-formatter-java.xml",
+    "java.format.settings.profile": "rkw",
+    "editor.rename.enablePreview": false,
+    "workbench.editor.enablePreview": false,
+    "maven.view": "hierarchical"
+}

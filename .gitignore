@@ -1,3 +1,9 @@
+# Don't check in database secrets.
+database_info.json
+
+target/
+pom.xml.versionsBackup
+
 # Compiled class file
 *.class
 
