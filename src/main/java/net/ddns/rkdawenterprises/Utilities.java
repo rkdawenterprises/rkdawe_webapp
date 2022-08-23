@@ -55,51 +55,80 @@ import javax.servlet.ServletContext;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
-import org.json.JSONObject;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class Utilities
 {
     public static class Database_info
     {
-        public String database_host;
-        public String database_name;
-        public String database_user;
-        public String database_pass;
+        public final String AUTHENTICATION_DATABASE_HOST;
+        public final String AUTHENTICATION_DATABASE_NAME;
+        public final String AUTHENTICATION_DATABASE_USER;
+        public final String AUTHENTICATION_DATABASE_PASS;
 
-        public Database_info( String database_host,
-                              String database_name,
-                              String database_user,
-                              String database_pass )
+        public Database_info( String authentication_database_host,
+                              String authentication_database_name,
+                              String authentication_database_user,
+                              String authentication_database_pass )
         {
-            this.database_host = database_host;
-            this.database_name = database_name;
-            this.database_user = database_user;
-            this.database_pass = database_pass;
+            this.AUTHENTICATION_DATABASE_HOST = authentication_database_host;
+            this.AUTHENTICATION_DATABASE_NAME = authentication_database_name;
+            this.AUTHENTICATION_DATABASE_USER = authentication_database_user;
+            this.AUTHENTICATION_DATABASE_PASS = authentication_database_pass;
+        }
+
+        public static String serialize_to_JSON( Database_info object )
+        {
+            Gson gson = new GsonBuilder().disableHtmlEscaping()
+                                         .setPrettyPrinting()
+                                         .create();
+            return gson.toJson( object );
+        }
+
+        public static Database_info deserialize_from_JSON( String string_JSON )
+        {
+            Database_info object = null;
+            try
+            {
+                Gson gson = new GsonBuilder().disableHtmlEscaping()
+                                             .setPrettyPrinting()
+                                             .create();
+                object = gson.fromJson( string_JSON,
+                                        Database_info.class );
+            }
+            catch( com.google.gson.JsonSyntaxException exception )
+            {
+                System.out.println( "Bad data format for Database_info: " + exception );
+                System.out.println( ">>>" + string_JSON + "<<<" );
+            }
+
+            return object;
+        }
+
+        public String serialize_to_JSON()
+        {
+            return serialize_to_JSON( this );
         }
     }
 
     public static Database_info get_database_info( ServletContext servlet_context ) throws IllegalArgumentException
     {
-        String database_info_json_as_string = resource_file_to_string( "database_info.json",
+        String database_info_JSON_as_string = resource_file_to_string( "database_info.json",
                                                                        servlet_context );
-
-        JSONObject a_JSON_object = new JSONObject( database_info_json_as_string );
-
-        return new Database_info( a_JSON_object.getString( "DATABASE_HOST" ),
-                                  a_JSON_object.getString( "DATABASE_NAME" ),
-                                  a_JSON_object.getString( "DATABASE_USER" ),
-                                  a_JSON_object.getString( "DATABASE_PASS" ) );
+        return Database_info.deserialize_from_JSON( database_info_JSON_as_string );
     }
 
     /**
      * Authenticates user:password by matching it to a record in the authentication
      * database. If the username is found, and the hashed password matches the
-     * hashed password in the database, then the given User object is updated with
-     * the information in the authentication database.
+     * hashed password in the database, the given User object is updated with the
+     * information in the authentication database.
      * 
-     * If the username is found, but the hashed password does not match, then the
-     * then the given User object is also updated with the information in the
-     * authentication database. But an exception is thrown.
+     * If the username is found but the hashed password does not match, the given
+     * User object is also updated with the information in the authentication
+     * database. But in this case an exception is thrown.
      *
      * The DATETIME values in the database are assumed to be UTC, so all times
      * returned are also UTC.
@@ -125,12 +154,12 @@ public class Utilities
         Class.forName( "com.mysql.cj.jdbc.Driver" );
 
         Database_info database_info = get_database_info( servlet_context );
-        String database_URI = "jdbc:mysql://" + database_info.database_host + ":3306/" + database_info.database_name
-                + "?serverTimezone=UTC";
+        String database_URI = "jdbc:mysql://" + database_info.AUTHENTICATION_DATABASE_HOST + ":3306/"
+                + database_info.AUTHENTICATION_DATABASE_NAME + "?serverTimezone=UTC";
 
         try( Connection connection = DriverManager.getConnection( database_URI,
-                                                                  database_info.database_user,
-                                                                  database_info.database_pass ) )
+                                                                  database_info.AUTHENTICATION_DATABASE_USER,
+                                                                  database_info.AUTHENTICATION_DATABASE_PASS ) )
         {
             String query = "SELECT * FROM accounts WHERE username = ?";
             try( PreparedStatement prepared_statement = connection.prepareStatement( query ) )
@@ -233,12 +262,12 @@ public class Utilities
         Class.forName( "com.mysql.cj.jdbc.Driver" );
 
         Database_info database_info = get_database_info( servlet_context );
-        String database_URI = "jdbc:mysql://" + database_info.database_host + ":3306/" + database_info.database_name
-                + "?serverTimezone=UTC";
+        String database_URI = "jdbc:mysql://" + database_info.AUTHENTICATION_DATABASE_HOST + ":3306/"
+                + database_info.AUTHENTICATION_DATABASE_NAME + "?serverTimezone=UTC";
 
         try( Connection connection = DriverManager.getConnection( database_URI,
-                                                                  database_info.database_user,
-                                                                  database_info.database_pass ) )
+                                                                  database_info.AUTHENTICATION_DATABASE_USER,
+                                                                  database_info.AUTHENTICATION_DATABASE_PASS ) )
         {
             Instant instant;
             instant = Instant.now()
@@ -293,12 +322,12 @@ public class Utilities
         Class.forName( "com.mysql.cj.jdbc.Driver" );
 
         Database_info database_info = get_database_info( servlet_context );
-        String database_URI = "jdbc:mysql://" + database_info.database_host + ":3306/" + database_info.database_name
-                + "?serverTimezone=UTC";
+        String database_URI = "jdbc:mysql://" + database_info.AUTHENTICATION_DATABASE_HOST + ":3306/"
+                + database_info.AUTHENTICATION_DATABASE_NAME + "?serverTimezone=UTC";
 
         try( Connection connection = DriverManager.getConnection( database_URI,
-                                                                  database_info.database_user,
-                                                                  database_info.database_pass ) )
+                                                                  database_info.AUTHENTICATION_DATABASE_USER,
+                                                                  database_info.AUTHENTICATION_DATABASE_PASS ) )
         {
             Instant instant;
             instant = Instant.now()
@@ -373,8 +402,7 @@ public class Utilities
         }
     }
 
-    public static String get_pom_properties( ServletContext servlet_context )
-            throws IllegalArgumentException
+    public static String get_pom_properties( ServletContext servlet_context ) throws IllegalArgumentException
     {
         try( InputStream input_stream = servlet_context.getResourceAsStream( "/META-INF/maven/net.ddns.rkdawenterprises/ROOT/pom.properties" );
                 BufferedReader reader = new BufferedReader( new InputStreamReader( input_stream ) ); )
@@ -843,7 +871,7 @@ public class Utilities
     {
         System.out.println( "Reloading RKDAWE Web application..." );
 
-        String context_path = servlet_context.getRealPath("/");
+        String context_path = servlet_context.getRealPath( "/" );
         File f = new File( context_path );
         String parent_path = f.getParent();
         try

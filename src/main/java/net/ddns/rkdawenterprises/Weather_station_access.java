@@ -1,9 +1,14 @@
 
 package net.ddns.rkdawenterprises;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
@@ -13,13 +18,29 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.management.InvalidAttributeValueException;
+import javax.servlet.ServletContext;
+
 import com.google.common.primitives.Bytes;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 /**
  * Singleton with synchronized access.
@@ -30,7 +51,69 @@ public final class Weather_station_access
 
     private static Weather_station_access s_instance = null;
 
-    private DISCOVERY m_discovery = null;
+    /**
+     * To prevent threading issues, always synchronize on this object.
+     */
+    private Discovery_info m_discovery = null;
+
+    /**
+     * Discovery information from the weather station.
+     */
+    public static class Discovery_info
+    {
+        public String host;
+        public int port;
+        public byte[] discovery_data;
+        public String DID;
+
+        public Discovery_info()
+        {
+        }
+
+        public Discovery_info( String host,
+                               int port,
+                               byte[] discovery_data,
+                               String DID )
+        {
+            this.host = host;
+            this.port = port;
+            this.discovery_data = discovery_data;
+            this.DID = DID;
+        }
+
+        public static String serialize_to_JSON( Discovery_info object )
+        {
+            Gson gson = new GsonBuilder().disableHtmlEscaping()
+                                         .setPrettyPrinting()
+                                         .create();
+            return gson.toJson( object );
+        }
+
+        public static Discovery_info deserialize_from_JSON( String string_JSON )
+        {
+            Discovery_info object = null;
+            try
+            {
+                Gson gson = new GsonBuilder().disableHtmlEscaping()
+                                             .setPrettyPrinting()
+                                             .create();
+                object = gson.fromJson( string_JSON,
+                                        Discovery_info.class );
+            }
+            catch( com.google.gson.JsonSyntaxException exception )
+            {
+                System.out.println( "Bad data format for Discovery_info: " + exception );
+                System.out.println( ">>>" + string_JSON + "<<<" );
+            }
+
+            return object;
+        }
+
+        public String serialize_to_JSON()
+        {
+            return serialize_to_JSON( this );
+        }
+    }
 
     private Weather_station_access()
     {
@@ -41,7 +124,16 @@ public final class Weather_station_access
         if( s_instance == null )
         {
             s_instance = new Weather_station_access();
-            s_instance.m_discovery = new DISCOVERY();
+            s_instance.m_discovery = new Discovery_info();
+            try
+            {
+                s_instance.weather_record_file_maintenance();
+            }
+            catch( Exception exception )
+            {
+                System.out.println( "Issue with weather history file. Verify path exists and has tomcat:tomcat ownership and proper permissions (including selinux): \n"
+                        + exception );
+            }
         }
 
         return s_instance;
@@ -51,26 +143,34 @@ public final class Weather_station_access
     {
         synchronized( m_discovery )
         {
+            m_discovery.host = null;
             find( m_discovery );
-            test_verify( m_discovery );
-            verify_update_time( m_discovery );
+
+            if( ( m_discovery.host != null ) && ( m_discovery.host.length() > 0 ) )
+            {
+                test_verify( m_discovery );
+                verify_update_time( m_discovery );
+            }
         }
     }
 
-    /**
-     * Discovery information from the weather station.
-     */
-    public static class DISCOVERY
+    public Weather_data get_weather_data() throws IOException, InterruptedException
     {
-        public String host;
-        public int port;
-        public byte[] discovery_data;
-        public String DID;
-    };
+        synchronized( m_discovery )
+        {
+            if( m_discovery.host != null )
+            {
+                return get_weather_data( m_discovery );
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Finds a weather station. Assumes there is only one.
-     * @param m_discovery2
+     * 
+     * @param discovery Updated with discovered weather station.
      * 
      * @param shutdown
      *
@@ -81,7 +181,8 @@ public final class Weather_station_access
      * @throws UnknownHostException
      * @throws IOException
      */
-    private void find( DISCOVERY discovery ) throws RuntimeException, SocketException, UnknownHostException, IOException
+    private void find( Discovery_info discovery )
+            throws RuntimeException, SocketException, UnknownHostException, IOException
     {
         int port = 22222;
         byte[] discovery_bytes = "discoverwlip".getBytes( StandardCharsets.US_ASCII );
@@ -137,7 +238,7 @@ public final class Weather_station_access
             String device_DID = new String( string_builder );
 
             discovery.host = receive_datagram_packet.getAddress()
-                                                      .getHostAddress();
+                                                    .getHostAddress();
             discovery.port = receive_datagram_packet.getPort();
             discovery.DID = device_DID;
             discovery.discovery_data = discovery_bytes;
@@ -151,10 +252,12 @@ public final class Weather_station_access
         }
         while( retries > 0 );
 
+        discovery.host = null;
+
         throw new RuntimeException( "Could not find a weather station" );
     }
 
-    private void test_verify( DISCOVERY discovery )
+    private void test_verify( Discovery_info discovery ) throws RuntimeException
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
@@ -193,7 +296,7 @@ public final class Weather_station_access
         throw new RuntimeException( "Could not configure weather station" );
     }
 
-    private void verify_update_time( DISCOVERY discovery )
+    private void verify_update_time( Discovery_info discovery ) throws RuntimeException
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
@@ -243,7 +346,7 @@ public final class Weather_station_access
      * @throws IOException
      * @throws InterruptedException
      */
-    private Weather_data get_weather_data() throws IOException, InterruptedException
+    private Weather_data get_weather_data( Discovery_info discovery ) throws IOException, InterruptedException
     {
         SocketAddress socketAddress = new InetSocketAddress( discovery.host,
                                                              discovery.port );
@@ -255,8 +358,8 @@ public final class Weather_station_access
                     DataInputStream in = new DataInputStream( new BufferedInputStream( socket.getInputStream() ) ); )
             {
                 socket.setSoTimeout( (int)Utilities.DEFAULT_NETWORK_TIMEOUT.toMillis() );
-                Weather_data weather_data = Commands.get_weather_data( in,
-                                                                       out );
+                Weather_data weather_data = get_weather_data( in,
+                                                              out );
                 weather_data.DID = discovery.DID;
                 return weather_data;
             }
@@ -310,6 +413,7 @@ public final class Weather_station_access
             retries--;
             synchronize_time( in,
                               out );
+            // TODO: This probably blocks the whole server?
             Utilities.sleep( Duration.ofMillis( 1200 ) );
             difference = get_time_difference( in,
                                               out ).abs();
@@ -503,6 +607,7 @@ public final class Weather_station_access
                            expected_response_size ) != expected_response_size )
                     || ( receive_buffer[0] != '\n' ) || ( receive_buffer[1] != '\r' ) )
             {
+                // TODO: This probably blocks the whole server?
                 Utilities.sleep( Duration.ofMillis( 1200 ) );
                 continue;
             }
@@ -888,8 +993,8 @@ public final class Weather_station_access
                                        received_length - 1 );
         }
 
-        weather_data.time = ZonedDateTime.now()
-                                         .toString();
+        weather_data.time = DateTimeFormatter.ofPattern( "yyyy-MM-dd'T'HH:mm:ss'Z'" )
+                                             .format( ZonedDateTime.now( ZoneId.of( "UTC" ) ) );
         weather_data.wrd = s_wrd;
         weather_data.total_packets_received = s_total_packets_received;
         weather_data.total_packets_missed = s_total_packets_missed;
@@ -900,5 +1005,143 @@ public final class Weather_station_access
         weather_data.firmware_version = s_firmware_version;
 
         return weather_data;
+    }
+
+    /**
+     * Storing the weather history as CSV text lines. Synchronize on the file path
+     * for all history file operations.
+     * 
+     * !!!TODO: The directory needs to be created before enabling Tomcat, and owner/group set to
+     *          tomcat:tomcat as well as 775 permissions (755 if no group modification)!!!
+     */
+    private static final String WEATHER_HISTORY_FILENAME = "weather_history0.csv";
+    private static final String WEATHER_HISTORY_DIRECTORY = "/var/lib/rkdaweapi/";
+    private static final String WEATHER_HISTORY_PATH = WEATHER_HISTORY_DIRECTORY + WEATHER_HISTORY_FILENAME;
+    private static final int MAX_HISTORY_FILE_SIZE_MiB = 6;
+    private static final int MAX_HISTORY_FILES = 10;
+
+    private void weather_record_file_maintenance() throws IOException, UnsupportedOperationException,
+            FileAlreadyExistsException, SecurityException, AccessDeniedException, InvalidAttributeValueException
+    {
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            Path primary_path = Paths.get( WEATHER_HISTORY_PATH );
+            if( Files.exists( primary_path ) )
+            {
+                if( Files.size( primary_path ) > ( MAX_HISTORY_FILE_SIZE_MiB * 1024 * 1024 ) )
+                {
+                    for( int i = MAX_HISTORY_FILES - 1; i >= 0; i-- )
+                    {
+                        String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0", String.valueOf( i ) );
+                        Path existing_path = Paths.get( existing_path_as_string );
+                        if( Files.exists( existing_path ) )
+                        {
+                            // Nine gets deleted, all others move up one.
+                            if( i == 9 )
+                            {
+                                System.out.printf( "File %s exists, deleting...\n", existing_path_as_string );
+
+                                Files.delete( existing_path );
+                                continue;
+                            }
+
+                            String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
+                                                                        String.valueOf( i + 1 ) );
+
+                            System.out.printf( "File %s exists, moving to %s...\n", existing_path_as_string, next_path_as_string );
+
+                            Path next_path = Paths.get( next_path_as_string );
+                            Files.move( existing_path,
+                                        next_path,
+                                        REPLACE_EXISTING );
+                        }
+                    }
+
+                    create_history_file();
+                }
+            }
+            else
+            {
+                create_history_file();
+            }
+        }
+    }
+
+    private void create_history_file() throws IOException, UnsupportedOperationException, FileAlreadyExistsException,
+            SecurityException, AccessDeniedException, InvalidAttributeValueException
+    {
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            Path primary_path = Paths.get( WEATHER_HISTORY_PATH );
+            Path directory_path = Paths.get( WEATHER_HISTORY_DIRECTORY );
+            if( !Files.exists( directory_path ) || !Files.isDirectory( directory_path )
+                    || !Files.isWritable( directory_path ) || !Files.isReadable( directory_path ) )
+            {
+                throw new InvalidAttributeValueException( "History directory missing or wrong permissions" );
+            }
+
+            Set< PosixFilePermission > permissions = PosixFilePermissions.fromString( "rw-rw-r--" );
+            FileAttribute< Set< PosixFilePermission > > file_attributes = PosixFilePermissions.asFileAttribute( permissions );
+            Files.createFile( primary_path,
+                              file_attributes );
+            Files.setPosixFilePermissions( primary_path,
+                                           permissions );
+            if( !Files.exists( primary_path ) || !Files.isWritable( primary_path ) || !Files.isReadable( primary_path ) )
+            {
+                throw new InvalidAttributeValueException( "Unable to create or there are wrong permissions for history file" );
+            }
+
+            BufferedWriter writer = new BufferedWriter( new FileWriter( WEATHER_HISTORY_PATH,
+                                                                        true ) );
+            writer.append( Weather_data.get_history_record_columns() )
+                  .close();
+        }
+    }
+
+    public void get_save_weather_record() throws FileAlreadyExistsException, AccessDeniedException,
+            InvalidAttributeValueException, UnsupportedOperationException, SecurityException, IOException
+    {
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            Weather_data weather_data;
+            int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
+            do
+            {
+                try
+                {
+                    weather_data = get_weather_data();
+                    if( weather_data == null )
+                    {
+                        retries--;
+                        continue;
+                    }
+
+                    BufferedWriter writer = new BufferedWriter( new FileWriter( WEATHER_HISTORY_PATH,
+                                                                                true ) );
+                    writer.append( weather_data.get_history_record() )
+                          .close();
+                    ;
+
+                    weather_record_file_maintenance();
+
+                    break;
+                }
+                catch( Exception exception )
+                {
+                    retries--;
+                    System.err.format( "Weather_station_access: Issue getting data from weather station, retry %d of %d:%s%n",
+                                       Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT - retries,
+                                       Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
+                                       exception );
+                    continue;
+                }
+            }
+            while( retries > 0 );
+        }
+    }
+
+    public void get_compressed_weather_history()
+    {
+        
     }
 }

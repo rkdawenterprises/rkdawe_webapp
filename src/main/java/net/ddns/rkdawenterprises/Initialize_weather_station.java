@@ -5,11 +5,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.InvalidAttributeValueException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -31,7 +34,9 @@ public class Initialize_weather_station extends HttpServlet
 
     private Scheduled_thread_pool_executor m_scheduled_thread_pool_executor = null;
     private String m_application_information = null;
-    private int m_reset_countdown;
+
+    public static final int RESET_COUNTDOWN_MINUTES = 60;
+    private int m_reset_countdown_minutes;
 
     @Override
     public void init() throws ServletException
@@ -77,8 +82,6 @@ public class Initialize_weather_station extends HttpServlet
             m_scheduled_thread_pool_executor.purge();
             m_scheduled_thread_pool_executor = null;
         }
-
-        getServletContext().removeAttribute( "identity" );
     }
 
     @Override
@@ -133,7 +136,7 @@ public class Initialize_weather_station extends HttpServlet
     {
         Weather_station_access.get_instance().initialize();
 
-        m_reset_countdown = 60;
+        m_reset_countdown_minutes = RESET_COUNTDOWN_MINUTES;
     }
 
     private Runnable get_weather_data = new Runnable()
@@ -141,16 +144,16 @@ public class Initialize_weather_station extends HttpServlet
         @Override
         public void run()
         {
-            m_reset_countdown--;
+            m_reset_countdown_minutes--;
 
             try
             {
-                if( m_reset_countdown <= 0 )
+                if( m_reset_countdown_minutes <= 0 )
                 {
                     initialize();
                 }
 
-                get_process_weather_data();
+                Weather_station_access.get_instance().get_save_weather_record();
             }
             catch( Exception exception )
             {
@@ -159,9 +162,4 @@ public class Initialize_weather_station extends HttpServlet
             }
         }
     };
-
-    protected void get_process_weather_data()
-    {
-        System.out.println("Getting weather data at " + ZonedDateTime.now().toString());
-    }
 }

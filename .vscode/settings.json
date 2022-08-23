@@ -4,5 +4,11 @@
     "java.format.settings.profile": "rkw",
     "editor.rename.enablePreview": false,
     "workbench.editor.enablePreview": false,
-    "maven.view": "hierarchical"
+    "maven.view": "hierarchical",
+    "maven.terminal.favorites": [
+        {
+            "alias": "package-with-clean",
+            "command": "clean compile package"
+        }
+    ]
 }

@@ -247,6 +247,7 @@ public class Authenticate extends HttpServlet
                                            exception_string );
 
                         session.invalidate();
+                        // TODO: This probably blocks the whole server?
                         Utilities.sleep( DELAY_AFTER_INVALID_ATTEMPT );
                     }
                 }
@@ -271,6 +272,7 @@ public class Authenticate extends HttpServlet
                                    exception_string );
 
                 session.invalidate();
+                // TODO: This probably blocks the whole server?
                 Utilities.sleep( DELAY_AFTER_INVALID_ATTEMPT );
             }
         }

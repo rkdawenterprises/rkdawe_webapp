@@ -580,7 +580,7 @@ public class Weather_data
     }
 
     /**
-     * The time the weather data was retrieved.
+     * The time the weather data was retrieved as UTC.
      */
     String time = "N/A";
 
@@ -755,5 +755,57 @@ public class Weather_data
         LocalDateTime date_time = date_time_start.plusHours( (long)hours ).plusMinutes( (long)minutes );
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern( "hh:mm a" );
         return( date_time.format( formatter ) );
+    }
+
+    public static String get_history_record_columns()
+    {
+        return( "time,barometer,inside_temperature,inside_humidity,outside_temperature,wind_speed,wind_direction,two_min_avg_wind_speed,ten_min_wind_gust,wind_direction_of_ten_min_wind_gust,dew_point,outside_humidity,heat_index,wind_chill,rain_rate,storm_rain,last_fifteen_min_rain,last_hour_rain,last_twenty_four_hour_rain\n" );
+    }
+
+    public String get_history_record()
+    {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append( time );
+        builder.append( "," );
+        builder.append( barometer );
+        builder.append( "," );
+        builder.append( inside_temperature );
+        builder.append( "," );
+        builder.append( inside_humidity );
+        builder.append( "," );
+        builder.append( outside_temperature );
+        builder.append( "," );
+        builder.append( wind_speed );
+        builder.append( "," );
+        builder.append( wind_direction );
+        builder.append( "," );
+        builder.append( two_min_avg_wind_speed );
+        builder.append( "," );
+        builder.append( ten_min_wind_gust );
+        builder.append( "," );
+        builder.append( wind_direction_of_ten_min_wind_gust );
+        builder.append( "," );
+        builder.append( dew_point );
+        builder.append( "," );
+        builder.append( outside_humidity );
+        builder.append( "," );
+        builder.append( heat_index );
+        builder.append( "," );
+        builder.append( wind_chill );
+        builder.append( "," );
+        builder.append( rain_rate );
+        builder.append( "," );
+        builder.append( storm_rain );
+        builder.append( "," );
+        builder.append( last_fifteen_min_rain );
+        builder.append( "," );
+        builder.append( last_hour_rain );
+        builder.append( "," );
+        builder.append( last_twenty_four_hour_rain );
+        
+        builder.append( "\n" );
+
+        return builder.toString();
     }
 }

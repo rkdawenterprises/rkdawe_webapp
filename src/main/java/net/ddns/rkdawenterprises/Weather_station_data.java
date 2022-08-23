@@ -1,14 +1,8 @@
 
 package net.ddns.rkdawenterprises;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -16,10 +10,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.json.JSONObject;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
-import org.json.JSONObject;
 
 @WebServlet( name = "Weather_station_data",
              description = "Returns weather data",
@@ -37,7 +31,12 @@ public class Weather_station_data extends HttpServlet
         {
             try
             {
-                weather_data = get_weather_data();
+                weather_data = Weather_station_access.get_instance().get_weather_data();
+                if( weather_data == null )
+                {
+                    retries--;
+                    continue;
+                }
 
                 System.out.printf( "Weather data aquired @ %s%n",
                                    weather_data.time );
