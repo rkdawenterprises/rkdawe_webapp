@@ -8,6 +8,8 @@ import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -34,9 +36,12 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.management.InvalidAttributeValueException;
-import javax.servlet.ServletContext;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 
 import com.google.common.primitives.Bytes;
 import com.google.gson.Gson;
@@ -1011,14 +1016,16 @@ public final class Weather_station_access
      * Storing the weather history as CSV text lines. Synchronize on the file path
      * for all history file operations.
      * 
-     * !!!TODO: The directory needs to be created before enabling Tomcat, and owner/group set to
-     *          tomcat:tomcat as well as 775 permissions (755 if no group modification)!!!
+     * !!!TODO: The directory needs to be created before enabling Tomcat, and
+     * owner/group set to tomcat:tomcat as well as 775 permissions (755 if no group
+     * modification)!!!
      */
     private static final String WEATHER_HISTORY_FILENAME = "weather_history0.csv";
     private static final String WEATHER_HISTORY_DIRECTORY = "/var/lib/rkdaweapi/";
     private static final String WEATHER_HISTORY_PATH = WEATHER_HISTORY_DIRECTORY + WEATHER_HISTORY_FILENAME;
     private static final int MAX_HISTORY_FILE_SIZE_MiB = 6;
     private static final int MAX_HISTORY_FILES = 10;
+    private static final String COMPRESSED_WEATHER_HISTORY_FILENAME = "weather_history";
 
     private void weather_record_file_maintenance() throws IOException, UnsupportedOperationException,
             FileAlreadyExistsException, SecurityException, AccessDeniedException, InvalidAttributeValueException
@@ -1032,23 +1039,27 @@ public final class Weather_station_access
                 {
                     for( int i = MAX_HISTORY_FILES - 1; i >= 0; i-- )
                     {
-                        String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0", String.valueOf( i ) );
+                        String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
+                                                                                       String.valueOf( i ) );
                         Path existing_path = Paths.get( existing_path_as_string );
                         if( Files.exists( existing_path ) )
                         {
                             // Nine gets deleted, all others move up one.
                             if( i == 9 )
                             {
-                                System.out.printf( "File %s exists, deleting...\n", existing_path_as_string );
+                                System.out.printf( "File %s exists, deleting...\n",
+                                                   existing_path_as_string );
 
                                 Files.delete( existing_path );
                                 continue;
                             }
 
                             String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
-                                                                        String.valueOf( i + 1 ) );
+                                                                                       String.valueOf( i + 1 ) );
 
-                            System.out.printf( "File %s exists, moving to %s...\n", existing_path_as_string, next_path_as_string );
+                            System.out.printf( "File %s exists, moving to %s...\n",
+                                               existing_path_as_string,
+                                               next_path_as_string );
 
                             Path next_path = Paths.get( next_path_as_string );
                             Files.move( existing_path,
@@ -1086,7 +1097,8 @@ public final class Weather_station_access
                               file_attributes );
             Files.setPosixFilePermissions( primary_path,
                                            permissions );
-            if( !Files.exists( primary_path ) || !Files.isWritable( primary_path ) || !Files.isReadable( primary_path ) )
+            if( !Files.exists( primary_path ) || !Files.isWritable( primary_path )
+                    || !Files.isReadable( primary_path ) )
             {
                 throw new InvalidAttributeValueException( "Unable to create or there are wrong permissions for history file" );
             }
@@ -1140,8 +1152,61 @@ public final class Weather_station_access
         }
     }
 
-    public void get_compressed_weather_history()
+    public void send_compressed_weather_history( HttpServletResponse response ) throws IOException
     {
-        
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            File directory = new File( WEATHER_HISTORY_DIRECTORY );
+            File[] files = directory.listFiles( ( dir,
+                                                  name ) -> name.matches( "weather_history\\d\\.csv" ) );
+
+            File compressed_file = File.createTempFile( COMPRESSED_WEATHER_HISTORY_FILENAME,
+                                                        ".zip" );
+            byte[] buffer = new byte[4096];
+            int length;
+
+            try( FileOutputStream file_output_stream = new FileOutputStream( compressed_file );
+                    ZipOutputStream zip_output_stream = new ZipOutputStream( file_output_stream ) )
+            {
+                for( File file : files )
+                {
+                    System.out.println( file.getName() );
+                    try( FileInputStream file_input_stream = new FileInputStream( file ) )
+                    {
+                        ZipEntry zip_entry = new ZipEntry( file.getName() );
+                        zip_output_stream.putNextEntry( zip_entry );
+
+                        while( ( length = file_input_stream.read( buffer ) ) >= 0 )
+                        {
+                            zip_output_stream.write( buffer,
+                                                     0,
+                                                     length );
+                        }
+                    }
+                }
+            }
+
+            System.out.println( compressed_file.getPath() );
+
+            response.setContentType( "application/zip" );
+            response.addHeader( "Content-Disposition",
+                                "attachment; filename=\"" + COMPRESSED_WEATHER_HISTORY_FILENAME + ".zip\"" );
+            response.setContentLength( (int)compressed_file.length() );
+
+            try( FileInputStream file_input_stream = new FileInputStream( compressed_file );
+                    ServletOutputStream servlet_output_stream = response.getOutputStream() )
+            {
+                while( ( length = file_input_stream.read( buffer ) ) >= 0 )
+                {
+                    servlet_output_stream.write( buffer,
+                                                 0,
+                                                 length );
+                }
+            }
+            finally
+            {
+                compressed_file.delete();
+            }
+        }
     }
 }

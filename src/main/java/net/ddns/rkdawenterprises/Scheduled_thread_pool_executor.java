@@ -2,7 +2,7 @@
 package net.ddns.rkdawenterprises;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+// import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -54,10 +54,11 @@ public class Scheduled_thread_pool_executor extends ScheduledThreadPoolExecutor 
         super.afterExecute( r,
                             t );
 
-        if( ( t == null ) && ( r instanceof Future< ? > ) )
-        {
-            System.out.println( r.toString() );
-        }
+        // This will log every scheduled tasks...
+        // if( ( t == null ) && ( r instanceof Future< ? > ) )
+        // {
+        //     System.out.println( r.toString() );
+        // }
 
         if( t != null )
         {
