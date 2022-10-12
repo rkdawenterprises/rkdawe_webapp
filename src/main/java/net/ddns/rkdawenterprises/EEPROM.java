@@ -12,7 +12,7 @@ public class EEPROM
     public static byte read_EEPROM( DataInputStream in,
                                     DataOutputStream out,
                                     int address )
-            throws IOException
+            throws IOException, WSD_exception
     {
         String command = String.format( "EERD %02X 01\n",
                                         address );
@@ -29,7 +29,7 @@ public class EEPROM
                 || ( receive_buffer[3] != 'K' ) || ( receive_buffer[4] != '\n' ) || ( receive_buffer[5] != '\r' )
                 || ( receive_buffer[8] != '\n' ) || ( receive_buffer[9] != '\r' ) )
         {
-            throw new RuntimeException( "EERD command failed" );
+            throw new WSD_exception( "EERD command failed" );
         }
 
         byte data_string[] = { receive_buffer[6], receive_buffer[7] };
@@ -41,7 +41,7 @@ public class EEPROM
                                       DataOutputStream out,
                                       int address,
                                       int size )
-            throws IOException
+            throws IOException, WSD_exception
     {
         String command = String.format( "EEBRD %02X %02X\n",
                                         address,
@@ -58,7 +58,7 @@ public class EEPROM
 
         if( ( size_read != expected_response_size ) || ( receive_buffer[0] != 0x06 ) )
         {
-            throw new RuntimeException( "EEBRD command failed" );
+            throw new WSD_exception( "EEBRD command failed" );
         }
 
         Check_CRC.check_CRC_16( receive_buffer,
@@ -73,7 +73,7 @@ public class EEPROM
                                      DataOutputStream out,
                                      int address,
                                      byte data )
-            throws IOException
+            throws IOException, WSD_exception
     {
         String command = String.format( "EEWR %02X %02X\n",
                                         address,
@@ -90,7 +90,7 @@ public class EEPROM
                 || ( receive_buffer[0] != '\n' ) || ( receive_buffer[1] != '\r' ) || ( receive_buffer[2] != 'O' )
                 || ( receive_buffer[3] != 'K' ) || ( receive_buffer[4] != '\n' ) || ( receive_buffer[5] != '\r' ) )
         {
-            throw new RuntimeException( "EEWR command failed" );
+            throw new WSD_exception( "EEWR command failed" );
         }
     }
 
@@ -99,9 +99,9 @@ public class EEPROM
                                      int address,
                                      int size,
                                      byte[] data )
-            throws IOException
+            throws IOException, WSD_exception
     {
-        if( ( size < 1 ) || ( size > 255 ) ) throw new RuntimeException( "EEBWR invalid argument size (1-255)" );
+        if( ( size < 1 ) || ( size > 255 ) ) throw new WSD_exception( "EEBWR invalid argument size (1-255)" );
 
         String command = String.format( "EEBWR %02X %02X\n",
                                         address,
@@ -118,7 +118,7 @@ public class EEPROM
 
         if( ( size_read != expected_response_size ) || ( receive_buffer[0] != 0x06 ) )
         {
-            throw new RuntimeException( "EEBWR (1) command failed" );
+            throw new WSD_exception( "EEBWR (1) command failed" );
         }
 
         short a_CRC = Check_CRC.calculate_CRC_16( data,
@@ -144,20 +144,20 @@ public class EEPROM
 
         if( ( size_read != expected_response_size ) || ( receive_buffer[0] != 0x06 ) )
         {
-            throw new RuntimeException( "EEBWR (2) command failed" );
+            throw new WSD_exception( "EEBWR (2) command failed" );
         }
     }
 
     public static void set_MANUAL_OR_AUTO( DataInputStream in,
                                            DataOutputStream out,
                                            byte value )
-            throws IOException
+            throws IOException, WSD_exception
     {
         int address = 0x12;
         byte data = read_EEPROM( in,
                                  out,
                                  address );
-        if( ( data > 1 ) || ( data < 0 ) ) throw new RuntimeException( "Received bad MANUAL_OR_AUTO value" );
+        if( ( data > 1 ) || ( data < 0 ) ) throw new WSD_exception( "Received bad MANUAL_OR_AUTO value" );
         if( data != value )
         {
             write_EEPROM( in,
@@ -169,20 +169,20 @@ public class EEPROM
 
     public static byte get_DAYLIGHT_SAVINGS( DataInputStream in,
                                              DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         int address = 0x13;
         byte data = read_EEPROM( in,
                                  out,
                                  address );
-        if( ( data > 1 ) || ( data < 0 ) ) throw new RuntimeException( "Received bad DAYLIGHT_SAVINGS value" );
+        if( ( data > 1 ) || ( data < 0 ) ) throw new WSD_exception( "Received bad DAYLIGHT_SAVINGS value" );
         return data;
     }
 
     public static void set_DAYLIGHT_SAVINGS( DataInputStream in,
                                              DataOutputStream out,
                                              byte value )
-            throws IOException
+            throws IOException, WSD_exception
     {
         byte data = get_DAYLIGHT_SAVINGS( in,
                                           out );
@@ -199,13 +199,13 @@ public class EEPROM
     public static void set_GMT_OR_ZONE( DataInputStream in,
                                         DataOutputStream out,
                                         byte value )
-            throws IOException
+            throws IOException, WSD_exception
     {
         int address = 0x16;
         byte data = read_EEPROM( in,
                                  out,
                                  address );
-        if( ( data > 1 ) || ( data < 0 ) ) throw new RuntimeException( "Received bad GMT_OR_ZONE value" );
+        if( ( data > 1 ) || ( data < 0 ) ) throw new WSD_exception( "Received bad GMT_OR_ZONE value" );
         if( data != value )
         {
             write_EEPROM( in,
@@ -217,7 +217,7 @@ public class EEPROM
 
     public static int get_GMT_OFFSET( DataInputStream in,
                                       DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         int address = 0x14;
         int size = 2;
@@ -232,7 +232,7 @@ public class EEPROM
 
         if( ( offset_seconds > ( 12 * 3600 ) ) || ( offset_seconds < ( -12 * 3600 ) ) )
         {
-            throw new RuntimeException( "Received bad GMT_OFFSET value" );
+            throw new WSD_exception( "Received bad GMT_OFFSET value" );
         }
 
         return offset_seconds;
@@ -241,7 +241,7 @@ public class EEPROM
     public static void set_GMT_OFFSET( DataInputStream in,
                                        DataOutputStream out,
                                        long value )
-            throws IOException
+            throws IOException, WSD_exception
     {
         int offset_seconds = get_GMT_OFFSET( in,
                                              out );

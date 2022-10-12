@@ -1,8 +1,6 @@
 
 package net.ddns.rkdawenterprises;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
@@ -144,7 +142,7 @@ public final class Weather_station_access
         return s_instance;
     }
 
-    public void initialize() throws SocketException, UnknownHostException, RuntimeException, IOException
+    public void initialize() throws SocketException, UnknownHostException, WSD_exception, IOException
     {
         synchronized( m_discovery )
         {
@@ -159,7 +157,8 @@ public final class Weather_station_access
         }
     }
 
-    public Weather_data get_weather_data() throws IOException, InterruptedException
+    public Weather_data get_weather_data()
+        throws IOException, InterruptedException, WSD_exception
     {
         synchronized( m_discovery )
         {
@@ -181,13 +180,13 @@ public final class Weather_station_access
      *
      * @return void
      *
-     * @throws RuntimeException
+     * @throws WSD_exception
      * @throws SocketException
      * @throws UnknownHostException
      * @throws IOException
      */
     private void find( Discovery_info discovery )
-            throws RuntimeException, SocketException, UnknownHostException, IOException
+            throws WSD_exception, SocketException, UnknownHostException, IOException
     {
         int port = 22222;
         byte[] discovery_bytes = "discoverwlip".getBytes( StandardCharsets.US_ASCII );
@@ -202,6 +201,7 @@ public final class Weather_station_access
         {
             try
             {
+                System.out.format( "Find: Sending discovery broadcast...%n" );
                 Utilities.send_UDP_broadcast( discovery_bytes,
                                               port,
                                               receive_datagram_packet );
@@ -210,7 +210,7 @@ public final class Weather_station_access
             {
                 retries--;
                 System.err.format( "Find: Timeout waiting for response, retry %d of %d...%n",
-                                   retries - Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
+                                   -( retries - Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT ),
                                    Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT );
                 continue;
             }
@@ -223,7 +223,7 @@ public final class Weather_station_access
             {
                 retries--;
                 System.err.format( "Find: Invalid response, retry %d of %d...%n",
-                                   retries - Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
+                                   -( retries - Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT ),
                                    Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT );
                 continue;
             }
@@ -257,12 +257,14 @@ public final class Weather_station_access
         }
         while( retries > 0 );
 
+        System.err.format( "Find: Error count exceeded.%n" );
+
         discovery.host = null;
 
-        throw new RuntimeException( "Could not find a weather station" );
+        throw new WSD_exception( "Could not find a weather station" );
     }
 
-    private void test_verify( Discovery_info discovery ) throws RuntimeException
+    private void test_verify( Discovery_info discovery ) throws WSD_exception
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
@@ -298,10 +300,10 @@ public final class Weather_station_access
         }
         while( retries > 0 );
 
-        throw new RuntimeException( "Could not configure weather station" );
+        throw new WSD_exception( "Could not configure weather station" );
     }
 
-    private void verify_update_time( Discovery_info discovery ) throws RuntimeException
+    private void verify_update_time( Discovery_info discovery ) throws WSD_exception
     {
         int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
         do
@@ -337,7 +339,7 @@ public final class Weather_station_access
         }
         while( retries > 0 );
 
-        throw new RuntimeException( "Could not configure weather station" );
+        throw new WSD_exception( "Could not configure weather station" );
     }
 
     /**
@@ -350,8 +352,10 @@ public final class Weather_station_access
      * 
      * @throws IOException
      * @throws InterruptedException
+     * @throws WSD_exception
      */
-    private Weather_data get_weather_data( Discovery_info discovery ) throws IOException, InterruptedException
+    private Weather_data get_weather_data( Discovery_info discovery )
+        throws IOException, InterruptedException, WSD_exception
     {
         SocketAddress socketAddress = new InetSocketAddress( discovery.host,
                                                              discovery.port );
@@ -379,10 +383,11 @@ public final class Weather_station_access
      * 
      * @throws IOException
      * @throws InterruptedException
+     * @throws WSD_exception
      */
     private void test_verify( DataInputStream in,
                               DataOutputStream out )
-            throws IOException, InterruptedException
+            throws IOException, InterruptedException, WSD_exception
     {
         wake( in,
               out );
@@ -402,7 +407,7 @@ public final class Weather_station_access
 
     private void verify_update_time( DataInputStream in,
                                      DataOutputStream out )
-            throws UnknownHostException, IOException, InterruptedException
+            throws UnknownHostException, IOException, InterruptedException, WSD_exception
     {
         wake( in,
               out );
@@ -426,13 +431,13 @@ public final class Weather_station_access
 
         if( ( MAX_TIME_DELTA.compareTo( difference ) <= 0 ) && retries <= 0 )
         {
-            throw new RuntimeException( "Unable to correct station time" );
+            throw new WSD_exception( "Unable to correct station time" );
         }
     }
 
     private Duration get_time_difference( DataInputStream in,
                                           DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         ZonedDateTime system_now = ZonedDateTime.now();
         ZonedDateTime station_now = get_station_time( in,
@@ -476,7 +481,7 @@ public final class Weather_station_access
 
     private ZonedDateTime get_station_time( DataInputStream in,
                                             DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         tm station_now = new tm();
         get_time( in,
@@ -500,7 +505,7 @@ public final class Weather_station_access
 
     private void configure_time( DataInputStream in,
                                  DataOutputStream out )
-            throws UnknownHostException, IOException, InterruptedException
+            throws UnknownHostException, IOException, InterruptedException, WSD_exception
     {
         tm system_now = get_local_tm();
 
@@ -595,10 +600,11 @@ public final class Weather_station_access
      *
      * @throws IOException
      * @throws InterruptedException
+     * @throws WSD_exception
      */
     private void wake( DataInputStream in,
                        DataOutputStream out )
-            throws IOException, InterruptedException
+            throws IOException, InterruptedException, WSD_exception
     {
         for( int i = 0; i < Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT; i++ )
         {
@@ -620,12 +626,12 @@ public final class Weather_station_access
             return;
         }
 
-        throw new RuntimeException( "Failed to wake up station" );
+        throw new WSD_exception( "Failed to wake up station" );
     }
 
     private void test( DataInputStream in,
                        DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "TEST\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -639,13 +645,13 @@ public final class Weather_station_access
                 || ( Bytes.indexOf( receive_buffer,
                                     expected_response ) != 0 ) )
         {
-            throw new RuntimeException( "TEST command failed" );
+            throw new WSD_exception( "TEST command failed" );
         }
     }
 
     private void wrd( DataInputStream in,
                       DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "WRD".getBytes( StandardCharsets.US_ASCII ) );
         out.write( 0x12 );
@@ -660,7 +666,7 @@ public final class Weather_station_access
                        expected_response_size ) != expected_response_size )
                 || ( receive_buffer[0] != 0x06 ) || ( receive_buffer[1] != 17 ) )
         {
-            throw new RuntimeException( "WRD command failed" );
+            throw new WSD_exception( "WRD command failed" );
         }
 
         s_wrd = receive_buffer[1];
@@ -668,7 +674,7 @@ public final class Weather_station_access
 
     private void rxcheck( DataInputStream in,
                           DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "RXCHECK\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -683,7 +689,7 @@ public final class Weather_station_access
                      0,
                      receive_buffer.length ) < minimum_response_size )
         {
-            throw new RuntimeException( "RXCHECK (1) command failed" );
+            throw new WSD_exception( "RXCHECK (1) command failed" );
         }
 
         String rxcheck_result = new String( receive_buffer,
@@ -701,13 +707,13 @@ public final class Weather_station_access
         }
         else
         {
-            throw new RuntimeException( "RXCHECK (2) command failed" );
+            throw new WSD_exception( "RXCHECK (2) command failed" );
         }
     }
 
     private void rxtest( DataInputStream in,
                          DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "RXTEST\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -721,13 +727,13 @@ public final class Weather_station_access
                 || ( Bytes.indexOf( receive_buffer,
                                     expected_response ) != 0 ) )
         {
-            throw new RuntimeException( "RXTEST command failed" );
+            throw new WSD_exception( "RXTEST command failed" );
         }
     }
 
     private void ver( DataInputStream in,
                       DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "VER\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -742,7 +748,7 @@ public final class Weather_station_access
                      0,
                      receive_buffer.length ) < minimum_response_size )
         {
-            throw new RuntimeException( "VER (1) command failed" );
+            throw new WSD_exception( "VER (1) command failed" );
         }
 
         String result = new String( receive_buffer,
@@ -757,13 +763,13 @@ public final class Weather_station_access
         }
         else
         {
-            throw new RuntimeException( "VER (2) command failed" );
+            throw new WSD_exception( "VER (2) command failed" );
         }
     }
 
     private void nver( DataInputStream in,
                        DataOutputStream out )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "NVER\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -778,7 +784,7 @@ public final class Weather_station_access
                      0,
                      receive_buffer.length ) < minimum_response_size )
         {
-            throw new RuntimeException( "NVER (1) command failed" );
+            throw new WSD_exception( "NVER (1) command failed" );
         }
 
         String result = new String( receive_buffer,
@@ -792,7 +798,7 @@ public final class Weather_station_access
         }
         else
         {
-            throw new RuntimeException( "NVER (2) command failed" );
+            throw new WSD_exception( "NVER (2) command failed" );
         }
     }
 
@@ -806,12 +812,13 @@ public final class Weather_station_access
      * @param time      The GNU Broken-down Time structure to update.
      * 
      * @throws IOException
+     * @throws WSD_exception
      */
     private void get_time( DataInputStream in,
                            DataOutputStream out,
                            String time_zone,
                            tm time )
-            throws IOException
+            throws IOException, WSD_exception
     {
         out.write( "GETTIME\n".getBytes( StandardCharsets.US_ASCII ) );
 
@@ -824,7 +831,7 @@ public final class Weather_station_access
 
         if( ( size_read < minimum_response_size ) || ( receive_buffer[0] != 0x06 ) )
         {
-            throw new RuntimeException( "GETTIME command failed" );
+            throw new WSD_exception( "GETTIME command failed" );
         }
 
         Check_CRC.check_CRC_16( receive_buffer,
@@ -862,11 +869,12 @@ public final class Weather_station_access
      * @param time The GNU Broken-down Time structure to update.
      * 
      * @throws IOException
+     * @throws WSD_exception
      */
     private void get_time( DataInputStream in,
                            DataOutputStream out,
                            tm time )
-            throws IOException
+            throws IOException, WSD_exception
     {
         ZonedDateTime system_now = ZonedDateTime.now();
         get_time( in,
@@ -925,7 +933,7 @@ public final class Weather_station_access
 
     private Weather_data get_weather_data( DataInputStream in,
                                            DataOutputStream out )
-            throws IOException, InterruptedException
+            throws IOException, InterruptedException, WSD_exception
     {
         wake( in,
               out );
@@ -1016,11 +1024,15 @@ public final class Weather_station_access
      * Storing the weather history as CSV text lines. Synchronize on the file path
      * for all history file operations.
      * 
+     * Index 0 is always the latest history data. Then they increment from index 1 for
+     * the oldest. But the oldest will periodically be deleted so it will increment.
+     * highest number will be the newest.
+     * 
      * !!!TODO: The directory needs to be created before enabling Tomcat, and
      * owner/group set to tomcat:tomcat as well as 775 permissions (755 if no group
      * modification)!!!
      */
-    private static final String WEATHER_HISTORY_FILENAME = "weather_history0.csv";
+    private static final String WEATHER_HISTORY_FILENAME = "weather_history_0.csv";
     private static final String WEATHER_HISTORY_DIRECTORY = "/var/lib/rkdaweapi/";
     private static final String WEATHER_HISTORY_PATH = WEATHER_HISTORY_DIRECTORY + WEATHER_HISTORY_FILENAME;
     private static final int MAX_HISTORY_FILE_SIZE_MiB = 6;
@@ -1037,36 +1049,41 @@ public final class Weather_station_access
             {
                 if( Files.size( primary_path ) > ( MAX_HISTORY_FILE_SIZE_MiB * 1024 * 1024 ) )
                 {
-                    for( int i = MAX_HISTORY_FILES - 1; i >= 0; i-- )
-                    {
-                        String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
-                                                                                       String.valueOf( i ) );
-                        Path existing_path = Paths.get( existing_path_as_string );
-                        if( Files.exists( existing_path ) )
-                        {
-                            // Nine gets deleted, all others move up one.
-                            if( i == 9 )
-                            {
-                                System.out.printf( "File %s exists, deleting...\n",
-                                                   existing_path_as_string );
+                    int index = get_next_file_index();
 
-                                Files.delete( existing_path );
-                                continue;
-                            }
+                    // Copy primary to next index.
 
-                            String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
-                                                                                       String.valueOf( i + 1 ) );
 
-                            System.out.printf( "File %s exists, moving to %s...\n",
-                                               existing_path_as_string,
-                                               next_path_as_string );
+                    // for( int i = MAX_HISTORY_FILES - 1; i >= 0; i-- )
+                    // {
+                    //     String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
+                    //                                                                    String.valueOf( i ) );
+                    //     Path existing_path = Paths.get( existing_path_as_string );
+                    //     if( Files.exists( existing_path ) )
+                    //     {
+                    //         // Nine gets deleted, all others move up one.
+                    //         if( i == 9 )
+                    //         {
+                    //             System.out.printf( "File %s exists, deleting...\n",
+                    //                                existing_path_as_string );
 
-                            Path next_path = Paths.get( next_path_as_string );
-                            Files.move( existing_path,
-                                        next_path,
-                                        REPLACE_EXISTING );
-                        }
-                    }
+                    //             Files.delete( existing_path );
+                    //             continue;
+                    //         }
+
+                    //         String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
+                    //                                                                    String.valueOf( i + 1 ) );
+
+                    //         System.out.printf( "File %s exists, moving to %s...\n",
+                    //                            existing_path_as_string,
+                    //                            next_path_as_string );
+
+                    //         Path next_path = Paths.get( next_path_as_string );
+                    //         Files.move( existing_path,
+                    //                     next_path,
+                    //                     REPLACE_EXISTING );
+                    //     }
+                    // }
 
                     create_history_file();
                 }
@@ -1075,6 +1092,39 @@ public final class Weather_station_access
             {
                 create_history_file();
             }
+        }
+    }
+
+    /**
+     * Scans the history directory and determines the next highest index. Also determines
+     * if the oldest file needs to be deleted and deletes it if necessary.
+     * 
+     * @return The next file index, or -1 for error.
+     * @throws IOException
+     */
+    private int get_next_file_index() throws IOException
+    {
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            File f = new File(WEATHER_HISTORY_DIRECTORY);
+            String[] paths = f.list();
+
+            int lowest_index = -1;
+            int highest_index = -1;
+
+            for( String pathname: paths )
+            { 
+                System.out.println(pathname);
+            }
+
+            if( ( ( highest_index - lowest_index ) + 1 ) > MAX_HISTORY_FILES )
+            {
+                String lowest_index_path_string = WEATHER_HISTORY_PATH.replace( "0", String.valueOf( lowest_index ) );
+                Path lowest_index_path = Path.of( lowest_index_path_string );
+                Files.delete( lowest_index_path );
+            }
+
+            return highest_index + 1;
         }
     }
 
@@ -1132,7 +1182,6 @@ public final class Weather_station_access
                                                                                 true ) );
                     writer.append( weather_data.get_history_record() )
                           .close();
-                    ;
 
                     weather_record_file_maintenance();
 

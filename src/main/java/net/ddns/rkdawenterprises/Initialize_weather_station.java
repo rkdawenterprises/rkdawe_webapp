@@ -42,11 +42,13 @@ public class Initialize_weather_station extends HttpServlet
 
         try
         {
+            System.out.format( "Initialize_weather_station: Initializing weather station...%n" );
             initialize();
         }
         catch( Exception exception )
         {
-            throw new ServletException( exception );
+            System.err.println( "Initialize_weather_station: Failed!!! Error: " + exception.toString() );
+            throw new ServletException( exception.toString() );
         }
 
         m_scheduled_thread_pool_executor = new Scheduled_thread_pool_executor();
@@ -68,7 +70,8 @@ public class Initialize_weather_station extends HttpServlet
                                                               TimeUnit.NANOSECONDS );
 
         m_application_information = Utilities.get_pom_properties( getServletContext() );
-        System.out.println( m_application_information );
+        System.out.println( "Initialize_weather_station: Application information: " + m_application_information );
+        System.out.format( "Initialize_weather_station: Finished initializing weather station.%n" );
     }
 
     private void stop()
@@ -99,7 +102,26 @@ public class Initialize_weather_station extends HttpServlet
         String logged_in = (String)session.getAttribute( "logged_in" );
         if( ( logged_in != null ) && logged_in.equals( "true" ) )
         {
-            init();
+            try
+            {
+                System.out.format( "Initialize_weather_station: Initializing weather station...%n" );
+                stop();
+                initialize();
+            }
+            catch( Exception e )
+            {
+                json_response.put( "error",
+                                   e.toString() );
+                json_response.put( "success",
+                                   "false" );
+
+                response.setContentType( "application/json" );
+
+                PrintWriter out = response.getWriter();
+                out.print( json_response );
+                out.close();
+                return;
+            }
 
             json_response.put( "success",
                                "true" );
@@ -129,9 +151,10 @@ public class Initialize_weather_station extends HttpServlet
         out.close();
     }
 
-    private void initialize() throws SocketException, UnknownHostException, RuntimeException, IOException
+    private void initialize() throws SocketException, UnknownHostException, WSD_exception, IOException
     {
-        Weather_station_access.get_instance().initialize();
+        Weather_station_access.get_instance()
+                              .initialize();
 
         m_reset_countdown_minutes = RESET_COUNTDOWN_MINUTES;
     }
@@ -150,7 +173,8 @@ public class Initialize_weather_station extends HttpServlet
                     initialize();
                 }
 
-                Weather_station_access.get_instance().get_save_weather_record();
+                Weather_station_access.get_instance()
+                                      .get_save_weather_record();
             }
             catch( Exception exception )
             {
