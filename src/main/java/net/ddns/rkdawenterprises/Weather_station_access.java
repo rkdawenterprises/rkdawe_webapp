@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -23,14 +24,21 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,6 +52,11 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.common.primitives.Bytes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import com.google.common.primitives.Ints;
+import org.json.JSONObject;
 
 /**
  * Singleton with synchronized access.
@@ -62,7 +75,7 @@ public final class Weather_station_access
     /**
      * Discovery information from the weather station.
      */
-    public static class Discovery_info
+    public static final class Discovery_info
     {
         public String host;
         public int port;
@@ -151,14 +164,16 @@ public final class Weather_station_access
 
             if( ( m_discovery.host != null ) && ( m_discovery.host.length() > 0 ) )
             {
+                System.out.println( "Testing weather station..." );
                 test_verify( m_discovery );
+                System.out.println( "Verifying and updating weather station time..." );
                 verify_update_time( m_discovery );
+                System.out.println( "Weather station initialization finished." );
             }
         }
     }
 
-    public Weather_data get_weather_data()
-        throws IOException, InterruptedException, WSD_exception
+    public Weather_data get_weather_data() throws IOException, InterruptedException, WSD_exception
     {
         synchronized( m_discovery )
         {
@@ -355,7 +370,7 @@ public final class Weather_station_access
      * @throws WSD_exception
      */
     private Weather_data get_weather_data( Discovery_info discovery )
-        throws IOException, InterruptedException, WSD_exception
+            throws IOException, InterruptedException, WSD_exception
     {
         SocketAddress socketAddress = new InetSocketAddress( discovery.host,
                                                              discovery.port );
@@ -567,7 +582,7 @@ public final class Weather_station_access
     /**
      * Equivalent to GNU Broken-down Time structure.
      */
-    public static class tm
+    public static final class tm
     {
         int tm_sec;
         int tm_min;
@@ -1024,18 +1039,23 @@ public final class Weather_station_access
      * Storing the weather history as CSV text lines. Synchronize on the file path
      * for all history file operations.
      * 
-     * Index 0 is always the latest history data. Then they increment from index 1 for
-     * the oldest. But the oldest will periodically be deleted so it will increment.
-     * highest number will be the newest.
+     * Index 0 is always the latest active history data file.
      * 
-     * !!!TODO: The directory needs to be created before enabling Tomcat, and
-     * owner/group set to tomcat:tomcat as well as 775 permissions (755 if no group
-     * modification)!!!
+     * The previous history data files will start at index 1 for the oldest, up to
+     * the max number of history files. The highest number will be the newest, and
+     * index 0 will be moved to the next highest number. The oldest will
+     * periodically be deleted when max number of files is exceeded, so the index
+     * for the oldest file will increase from 1.
+     * 
+     * !!!TODO: The WEATHER_HISTORY_DIRECTORY needs to be created before enabling
+     * Tomcat, and owner/group set to tomcat:tomcat as well as 775 permissions (or
+     * 755 if no group write/modification needed)!!!
      */
     private static final String WEATHER_HISTORY_FILENAME = "weather_history_0.csv";
+    private static final String WEATHER_HISTORY_FILENAME_REGEX = "^weather_history_(\\d+)\\.csv$";
     private static final String WEATHER_HISTORY_DIRECTORY = "/var/lib/rkdaweapi/";
     private static final String WEATHER_HISTORY_PATH = WEATHER_HISTORY_DIRECTORY + WEATHER_HISTORY_FILENAME;
-    private static final int MAX_HISTORY_FILE_SIZE_MiB = 6;
+    private static final int MAX_HISTORY_FILE_SIZE_KiB = 1;
     private static final int MAX_HISTORY_FILES = 10;
     private static final String COMPRESSED_WEATHER_HISTORY_FILENAME = "weather_history";
 
@@ -1047,45 +1067,33 @@ public final class Weather_station_access
             Path primary_path = Paths.get( WEATHER_HISTORY_PATH );
             if( Files.exists( primary_path ) )
             {
-                if( Files.size( primary_path ) > ( MAX_HISTORY_FILE_SIZE_MiB * 1024 * 1024 ) )
+                if( Files.size( primary_path ) > ( MAX_HISTORY_FILE_SIZE_KiB * 1024 ) )
                 {
-                    int index = get_next_file_index();
+                    int[] indicies = get_file_indicies();
+                    int lowest_index = indicies[0];
+                    int highest_index = indicies[1];
+                    int index_length = ( highest_index - lowest_index ) + 1;
+
+                    // Make room for file move.
+                    if( index_length > ( MAX_HISTORY_FILES - 1 ) )
+                    {
+                        String lowest_index_path_string = WEATHER_HISTORY_PATH.replace( "0",
+                                                                                        String.valueOf( lowest_index ) );
+                        Path lowest_index_path = Path.of( lowest_index_path_string );
+                        Files.delete( lowest_index_path );
+                    }
 
                     // Copy primary to next index.
-
-
-                    // for( int i = MAX_HISTORY_FILES - 1; i >= 0; i-- )
-                    // {
-                    //     String existing_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
-                    //                                                                    String.valueOf( i ) );
-                    //     Path existing_path = Paths.get( existing_path_as_string );
-                    //     if( Files.exists( existing_path ) )
-                    //     {
-                    //         // Nine gets deleted, all others move up one.
-                    //         if( i == 9 )
-                    //         {
-                    //             System.out.printf( "File %s exists, deleting...\n",
-                    //                                existing_path_as_string );
-
-                    //             Files.delete( existing_path );
-                    //             continue;
-                    //         }
-
-                    //         String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
-                    //                                                                    String.valueOf( i + 1 ) );
-
-                    //         System.out.printf( "File %s exists, moving to %s...\n",
-                    //                            existing_path_as_string,
-                    //                            next_path_as_string );
-
-                    //         Path next_path = Paths.get( next_path_as_string );
-                    //         Files.move( existing_path,
-                    //                     next_path,
-                    //                     REPLACE_EXISTING );
-                    //     }
-                    // }
+                    String next_path_as_string = WEATHER_HISTORY_PATH.replace( "0",
+                                                                               String.valueOf( highest_index + 1 ) );
+                    Path next_path = Paths.get( next_path_as_string );
+                    Files.move( primary_path,
+                                next_path,
+                                StandardCopyOption.REPLACE_EXISTING );
 
                     create_history_file();
+
+                    return;
                 }
             }
             else
@@ -1096,35 +1104,49 @@ public final class Weather_station_access
     }
 
     /**
-     * Scans the history directory and determines the next highest index. Also determines
-     * if the oldest file needs to be deleted and deletes it if necessary.
+     * Scans the history directory and determines the lowest and highest indicies,
+     * excluding 0.
      * 
-     * @return The next file index, or -1 for error.
+     * @return An integer array with the {lowest, highest} file indicies, or {0, 0}
+     *         for error or no files.
      * @throws IOException
      */
-    private int get_next_file_index() throws IOException
+    private int[] get_file_indicies() throws IOException
     {
         synchronized( WEATHER_HISTORY_PATH )
         {
-            File f = new File(WEATHER_HISTORY_DIRECTORY);
+            File f = new File( WEATHER_HISTORY_DIRECTORY );
             String[] paths = f.list();
 
-            int lowest_index = -1;
-            int highest_index = -1;
+            int lowest_index = Integer.MAX_VALUE;
+            int highest_index = Integer.MIN_VALUE;
 
-            for( String pathname: paths )
-            { 
-                System.out.println(pathname);
-            }
-
-            if( ( ( highest_index - lowest_index ) + 1 ) > MAX_HISTORY_FILES )
+            final Pattern pattern = Pattern.compile( WEATHER_HISTORY_FILENAME_REGEX );
+            for( String pathname : paths )
             {
-                String lowest_index_path_string = WEATHER_HISTORY_PATH.replace( "0", String.valueOf( lowest_index ) );
-                Path lowest_index_path = Path.of( lowest_index_path_string );
-                Files.delete( lowest_index_path );
+                final Matcher matcher = pattern.matcher( pathname );
+                if( matcher.find() )
+                {
+                    if( matcher.groupCount() == 1 )
+                    {
+                        int index = Optional.ofNullable( matcher.group( 1 ) )
+                                            .map( Ints::tryParse )
+                                            .orElse( Integer.MIN_VALUE );
+                        if( index == 0 ) continue;
+                        if( index < lowest_index ) lowest_index = index;
+                        if( index > highest_index ) highest_index = index;
+                    }
+                }
             }
 
-            return highest_index + 1;
+            if( ( lowest_index == Integer.MAX_VALUE ) || ( highest_index == Integer.MIN_VALUE ) )
+            {
+                return new int[] { 0, 0 };
+            }
+            else
+            {
+                return new int[] { lowest_index, highest_index };
+            }
         }
     }
 
@@ -1161,65 +1183,122 @@ public final class Weather_station_access
     }
 
     public void get_save_weather_record() throws FileAlreadyExistsException, AccessDeniedException,
-            InvalidAttributeValueException, UnsupportedOperationException, SecurityException, IOException
+            InvalidAttributeValueException, UnsupportedOperationException, SecurityException, IOException, WSD_exception
     {
-        synchronized( WEATHER_HISTORY_PATH )
+        Weather_data weather_data = null;
+        int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
+        do
         {
-            Weather_data weather_data;
-            int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
-            do
+            try
             {
-                try
-                {
-                    weather_data = get_weather_data();
-                    if( weather_data == null )
-                    {
-                        retries--;
-                        continue;
-                    }
-
-                    BufferedWriter writer = new BufferedWriter( new FileWriter( WEATHER_HISTORY_PATH,
-                                                                                true ) );
-                    writer.append( weather_data.get_history_record() )
-                          .close();
-
-                    weather_record_file_maintenance();
-
-                    break;
-                }
-                catch( Exception exception )
+                weather_data = get_weather_data();
+                if( weather_data == null )
                 {
                     retries--;
-                    System.err.format( "Weather_station_access: Issue getting data from weather station, retry %d of %d:%s%n",
-                                       Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT - retries,
-                                       Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
-                                       exception );
                     continue;
                 }
+
+                break;
             }
-            while( retries > 0 );
+            catch( Exception exception )
+            {
+                retries--;
+                System.err.format( "Weather_station_access: Issue getting data from weather station, retry %d of %d:%s%n",
+                                   Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT - retries,
+                                   Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
+                                   exception );
+                continue;
+            }
+        }
+        while( retries > 0 );
+
+        if( ( weather_data == null ) || ( retries <= 0 ) )
+        {
+            throw new WSD_exception( "Weather_station_access: Issue getting data from weather station" );
+        }
+
+        synchronized( WEATHER_HISTORY_PATH )
+        {
+            try( BufferedWriter writer = new BufferedWriter( new FileWriter( WEATHER_HISTORY_PATH,
+                                                                             true ) ) )
+            {
+                writer.append( weather_data.get_history_record() );
+            }
+
+            weather_record_file_maintenance();
         }
     }
 
-    public void send_compressed_weather_history( HttpServletResponse response ) throws IOException
+    /**
+     * The given type indicates the requested files including "all", or "dir", or a
+     * CSV (%2C) list of file indicies. The "all" or "list of" files will be
+     * compressed into a zip file. The "dir" directory listing will just be plain
+     * text.
+     * 
+     * @param response
+     * @param type
+     * @throws IOException
+     */
+    public void send_compressed_weather_history( HttpServletResponse response,
+                                                 String type )
+            throws IOException
     {
         synchronized( WEATHER_HISTORY_PATH )
         {
-            File directory = new File( WEATHER_HISTORY_DIRECTORY );
-            File[] files = directory.listFiles( ( dir,
-                                                  name ) -> name.matches( "weather_history\\d\\.csv" ) );
-
-            File compressed_file = File.createTempFile( COMPRESSED_WEATHER_HISTORY_FILENAME,
-                                                        ".zip" );
-            byte[] buffer = new byte[4096];
-            int length;
-
-            try( FileOutputStream file_output_stream = new FileOutputStream( compressed_file );
-                    ZipOutputStream zip_output_stream = new ZipOutputStream( file_output_stream ) )
+            if( type.equalsIgnoreCase( "all" ) )
             {
-                for( File file : files )
+                send_all( response );
+            }
+            else if( type.equalsIgnoreCase( "dir" ) )
+            {
+                send_directory_listing( response );
+            }
+            else
+            {
+                String[] indicies = type.split( "," );
+                if( indicies.length > 0 )
                 {
-                    System.out.println( file.getName() );
+                    List< File > file_list = new ArrayList< File >( indicies.length );
+                    try
+                    {
+                        for( String index_string : indicies )
+                        {
+                            int index = Integer.parseInt( index_string );
+                            String path_string = WEATHER_HISTORY_PATH.replace( "0",
+                                                                               String.valueOf( index ) );
+                            file_list.add( new File( path_string ) );
+                        }
+                    }
+                    catch( NumberFormatException e )
+                    {
+                        response.setStatus( HttpServletResponse.SC_BAD_REQUEST );
+                        return;
+                    }
+
+                    send_files( response,
+                                file_list );
+                }
+            }
+        }
+    }
+
+    private void send_files( HttpServletResponse response,
+                             List< File > files )
+            throws IOException
+    {
+        byte[] buffer = new byte[4096];
+        int length;
+
+        File compressed_file = File.createTempFile( COMPRESSED_WEATHER_HISTORY_FILENAME,
+                                                    ".zip" );
+        try( FileOutputStream file_output_stream = new FileOutputStream( compressed_file );
+                ZipOutputStream zip_output_stream = new ZipOutputStream( file_output_stream ) )
+        {
+            for( File file : files )
+            {
+                if( file.exists() && file.canRead() && ( file.length() > Weather_data.get_history_record_columns()
+                                                                                     .length() ) )
+                {
                     try( FileInputStream file_input_stream = new FileInputStream( file ) )
                     {
                         ZipEntry zip_entry = new ZipEntry( file.getName() );
@@ -1233,29 +1312,204 @@ public final class Weather_station_access
                         }
                     }
                 }
-            }
-
-            System.out.println( compressed_file.getPath() );
-
-            response.setContentType( "application/zip" );
-            response.addHeader( "Content-Disposition",
-                                "attachment; filename=\"" + COMPRESSED_WEATHER_HISTORY_FILENAME + ".zip\"" );
-            response.setContentLength( (int)compressed_file.length() );
-
-            try( FileInputStream file_input_stream = new FileInputStream( compressed_file );
-                    ServletOutputStream servlet_output_stream = response.getOutputStream() )
-            {
-                while( ( length = file_input_stream.read( buffer ) ) >= 0 )
+                else
                 {
-                    servlet_output_stream.write( buffer,
-                                                 0,
-                                                 length );
+                    response.setStatus( HttpServletResponse.SC_NOT_FOUND );
+                    return;
                 }
             }
-            finally
+        }
+
+        response.setContentType( "application/zip" );
+        response.addHeader( "Content-Disposition",
+                            "attachment; filename=\"" + COMPRESSED_WEATHER_HISTORY_FILENAME + ".zip\"" );
+        response.setContentLength( (int)compressed_file.length() );
+
+        try( FileInputStream file_input_stream = new FileInputStream( compressed_file );
+                ServletOutputStream servlet_output_stream = response.getOutputStream() )
+        {
+            while( ( length = file_input_stream.read( buffer ) ) >= 0 )
             {
-                compressed_file.delete();
+                servlet_output_stream.write( buffer,
+                                             0,
+                                             length );
             }
+        }
+        finally
+        {
+            compressed_file.delete();
+        }
+    }
+
+    public static final class Directory_listing
+    {
+        public static final class File_info
+        {
+            public String m_name;
+            public long m_size;
+            public ZonedDateTime m_last_modified_time;
+            public ZonedDateTime m_creation_time;
+            public ZonedDateTime m_last_access_time;
+
+            File_info( File file ) throws IOException
+            {
+                BasicFileAttributes attributes = Files.readAttributes( file.toPath(),
+                                                                       BasicFileAttributes.class );
+                m_name = file.getName();
+                m_size = attributes.size();
+                m_last_modified_time = attributes.lastModifiedTime()
+                                                 .toInstant()
+                                                 .atZone( ZoneId.systemDefault() )
+                                                 .withZoneSameInstant( ZoneId.of( "UTC" ) );
+                m_creation_time = attributes.creationTime()
+                                            .toInstant()
+                                            .atZone( ZoneId.systemDefault() )
+                                            .withZoneSameInstant( ZoneId.of( "UTC" ) );
+                m_last_access_time = attributes.lastAccessTime()
+                                               .toInstant()
+                                               .atZone( ZoneId.systemDefault() )
+                                               .withZoneSameInstant( ZoneId.of( "UTC" ) );
+            }
+        }
+
+        List< File_info > m_file_list = new ArrayList< File_info >( 16 );
+
+        public void add_file( File file ) throws IOException
+        {
+            m_file_list.add( new File_info( file ) );
+        }
+
+        public static final Gson m_GSON = new GsonBuilder().registerTypeAdapter( ZonedDateTime.class,
+                                                                                 new TypeAdapter< ZonedDateTime >()
+                                                                                 {
+                                                                                     @Override
+                                                                                     public void write( JsonWriter out,
+                                                                                                        ZonedDateTime value )
+                                                                                             throws IOException
+                                                                                     {
+                                                                                         out.value( value.toString() );
+                                                                                     }
+
+                                                                                     @Override
+                                                                                     public ZonedDateTime read( JsonReader in )
+                                                                                             throws IOException
+                                                                                     {
+                                                                                         return ZonedDateTime.parse( in.nextString() );
+                                                                                     }
+                                                                                 } )
+                                                           .enableComplexMapKeySerialization()
+                                                           .disableHtmlEscaping()
+                                                           .setPrettyPrinting()
+                                                           .create();
+
+        public static String serialize_to_JSON( Directory_listing object )
+        {
+            return m_GSON.toJson( object );
+        }
+
+        public static Directory_listing deserialize_from_JSON( String string_JSON )
+        {
+            Directory_listing object = null;
+            try
+            {
+                object = m_GSON.fromJson( string_JSON,
+                                          Directory_listing.class );
+            }
+            catch( com.google.gson.JsonSyntaxException exception )
+            {
+                System.out.println( "Bad data format for File_info: " + exception );
+                System.out.println( ">>>" + string_JSON + "<<<" );
+            }
+
+            return object;
+        }
+
+        public String serialize_to_JSON()
+        {
+            return serialize_to_JSON( this );
+        }
+    }
+
+    private void send_directory_listing( HttpServletResponse response ) throws IOException
+    {
+        Directory_listing directory_listing = new Directory_listing();
+
+        File directory = new File( WEATHER_HISTORY_DIRECTORY );
+        File[] files = directory.listFiles( ( dir,
+                                              name ) -> name.matches( WEATHER_HISTORY_FILENAME_REGEX ) );
+        for( File file : files )
+        {
+            directory_listing.add_file( file );
+        }
+
+        String directory_listing_JSON_string = directory_listing.serialize_to_JSON();
+        JSONObject directory_listing_JSON = new JSONObject( directory_listing_JSON_string );
+
+        JSONObject json_response = new JSONObject();
+        json_response.put( "directory_listing",
+                           directory_listing_JSON );
+
+        json_response.put( "success",
+                           "true" );
+
+        response.setContentType( "application/json" );
+
+        PrintWriter out = response.getWriter();
+        out.print( json_response );
+        out.close();
+
+        return;
+    }
+
+    private void send_all( HttpServletResponse response ) throws IOException
+    {
+        byte[] buffer = new byte[4096];
+        int length;
+
+        File directory = new File( WEATHER_HISTORY_DIRECTORY );
+        File[] files = directory.listFiles( ( dir,
+                                              name ) -> name.matches( WEATHER_HISTORY_FILENAME_REGEX ) );
+
+        File compressed_file = File.createTempFile( COMPRESSED_WEATHER_HISTORY_FILENAME,
+                                                    ".zip" );
+        try( FileOutputStream file_output_stream = new FileOutputStream( compressed_file );
+                ZipOutputStream zip_output_stream = new ZipOutputStream( file_output_stream ) )
+        {
+            for( File file : files )
+            {
+                try( FileInputStream file_input_stream = new FileInputStream( file ) )
+                {
+                    ZipEntry zip_entry = new ZipEntry( file.getName() );
+                    zip_output_stream.putNextEntry( zip_entry );
+
+                    while( ( length = file_input_stream.read( buffer ) ) >= 0 )
+                    {
+                        zip_output_stream.write( buffer,
+                                                 0,
+                                                 length );
+                    }
+                }
+            }
+        }
+
+        response.setContentType( "application/zip" );
+        response.addHeader( "Content-Disposition",
+                            "attachment; filename=\"" + COMPRESSED_WEATHER_HISTORY_FILENAME + ".zip\"" );
+        response.setContentLength( (int)compressed_file.length() );
+
+        try( FileInputStream file_input_stream = new FileInputStream( compressed_file );
+                ServletOutputStream servlet_output_stream = response.getOutputStream() )
+        {
+            while( ( length = file_input_stream.read( buffer ) ) >= 0 )
+            {
+                servlet_output_stream.write( buffer,
+                                             0,
+                                             length );
+            }
+        }
+        finally
+        {
+            compressed_file.delete();
         }
     }
 }

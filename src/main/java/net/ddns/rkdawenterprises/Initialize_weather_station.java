@@ -70,7 +70,7 @@ public class Initialize_weather_station extends HttpServlet
                                                               TimeUnit.NANOSECONDS );
 
         m_application_information = Utilities.get_pom_properties( getServletContext() );
-        System.out.println( "Initialize_weather_station: Application information: " + m_application_information );
+        System.out.println( "Initialize_weather_station: Application information:\n" + m_application_information );
         System.out.format( "Initialize_weather_station: Finished initializing weather station.%n" );
     }
 
@@ -78,6 +78,12 @@ public class Initialize_weather_station extends HttpServlet
     {
         if( m_scheduled_thread_pool_executor != null )
         {
+            m_scheduled_thread_pool_executor.shutdown();
+            try
+            {
+                m_scheduled_thread_pool_executor.awaitTermination( 5, TimeUnit.SECONDS );
+            }
+            catch( InterruptedException e ) {}
             m_scheduled_thread_pool_executor.shutdownNow();
             m_scheduled_thread_pool_executor.purge();
             m_scheduled_thread_pool_executor = null;
