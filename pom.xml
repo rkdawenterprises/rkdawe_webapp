@@ -9,7 +9,7 @@
 
     <name>RKDAW Enterprises Web API</name>
     <description>Web API for RKDAW Enterprises server.</description>
-    <url>httpS://rkdawenterprises.ddns.net/rkdawapi_web_app</url>
+    <url>https://rkdawenterprises.ddns.net/rkdawapi_web_app</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
