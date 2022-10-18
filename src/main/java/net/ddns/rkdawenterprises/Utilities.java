@@ -404,19 +404,33 @@ public class Utilities
 
     public static String get_pom_properties( ServletContext servlet_context ) throws IllegalArgumentException
     {
+        StringBuffer string_buffer = new StringBuffer();
+
         try( InputStream input_stream = servlet_context.getResourceAsStream( "/META-INF/maven/net.ddns.rkdawenterprises/ROOT/pom.properties" );
                 BufferedReader reader = new BufferedReader( new InputStreamReader( input_stream ) ); )
         {
             String line = "";
-            StringBuffer string_buffer = new StringBuffer();
             while( ( line = reader.readLine() ) != null )
                 string_buffer.append( line + System.lineSeparator() );
-            return string_buffer.toString();
         }
         catch( Exception e )
         {
             throw new IllegalArgumentException( "Error reading file or invalid path" );
         }
+
+        try( InputStream input_stream = servlet_context.getResourceAsStream( "/META-INF/MANIFEST.MF" );
+                BufferedReader reader = new BufferedReader( new InputStreamReader( input_stream ) ); )
+        {
+            String line = "";
+            while( ( line = reader.readLine() ) != null )
+                string_buffer.append( line + System.lineSeparator() );
+        }
+        catch( Exception e )
+        {
+            throw new IllegalArgumentException( "Error reading file or invalid path" );
+        }
+
+        return string_buffer.toString();
     }
 
     /**

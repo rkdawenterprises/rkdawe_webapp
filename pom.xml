@@ -4,12 +4,12 @@
 
     <groupId>net.ddns.rkdawenterprises</groupId>
     <artifactId>ROOT</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>NOT.USED.SEE.MANIFEST.MF</version>
     <packaging>war</packaging>
 
     <name>RKDAW Enterprises Web API</name>
     <description>Web API for RKDAW Enterprises server.</description>
-    <url>httpd://localhost/tomcat</url>
+    <url>httpS://rkdawenterprises.ddns.net/rkdawapi_web_app</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -43,7 +43,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20220320</version>
+            <version>20220924</version>
         </dependency>
 
         <dependency>
@@ -121,6 +121,11 @@
                     <version>3.2.3</version>
                     <configuration>
                         <outputDirectory>/usr/share/tomcat/webapps</outputDirectory>
+                        <archive>
+                            <manifestEntries>
+                                <SCM-Revision>${git.commit.time}.${git.commit.id.describe-short}</SCM-Revision>
+                            </manifestEntries>
+                        </archive>
                     </configuration>
                 </plugin>
 
@@ -140,13 +145,29 @@
                     <artifactId>versions-maven-plugin</artifactId>  
                     <version>2.11.0</version>  
                  </plugin>
-
-                 <plugin>
-                    <groupId>io.github.git-commit-id</groupId>
-                    <artifactId>git-commit-id-maven-plugin</artifactId>
-                    <version>5.0.0</version>  
-                 </plugin>  
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>5.0.0</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.directory}/${project.artifactId}/WEB-INF/res/git.properties</generateGitPropertiesFilename>
+                    <commitIdGenerationMode>full</commitIdGenerationMode>
+                    <dateFormat>yyyyMMdd-HHmmss</dateFormat>
+                </configuration>
+             </plugin>  
+        </plugins>
     </build>
 </project>
