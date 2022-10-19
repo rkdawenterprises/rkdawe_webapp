@@ -23,7 +23,8 @@ public class Weather_station_history extends HttpServlet
         {
             String type = request.getParameter( "type" );
             if( type == null ) type = "all";
-            Weather_station_access.get_instance().send_compressed_weather_history( response, type );
+            Weather_history.send_compressed_weather_history( response,
+                                                             type );
             return;
         }
         catch( Exception exception )

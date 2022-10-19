@@ -4,12 +4,12 @@
 
     <groupId>net.ddns.rkdawenterprises</groupId>
     <artifactId>ROOT</artifactId>
-    <version>NOT.USED.SEE.MANIFEST.MF</version>
+    <version>POM.VERSION.NOT.USED.SEE.MANIFEST.MF</version>
     <packaging>war</packaging>
 
     <name>RKDAW Enterprises Web API</name>
     <description>Web API for RKDAW Enterprises server.</description>
-    <url>https://rkdawenterprises.ddns.net/rkdawapi_web_app</url>
+    <url>https://rkdawenterprises.ddns.net/rkdaweapi_web_app</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

@@ -897,4 +897,48 @@ public class Utilities
             System.out.println( exception );
         }
     }
+
+    /**
+     * Equivalent to GNU Broken-down Time structure.
+     */
+    public static final class tm
+    {
+        int tm_sec;
+        int tm_min;
+        int tm_hour;
+        int tm_mday;
+        int tm_mon;
+        int tm_year;
+        int tm_wday;
+        int tm_yday;
+        Boolean tm_isdst;
+        long tm_gmtoff;
+        String tm_zone;
+    }
+
+    public static tm get_local_tm()
+    {
+        ZonedDateTime system_now = ZonedDateTime.now();
+
+        tm local_tm = new tm();
+        local_tm.tm_gmtoff = system_now.getOffset()
+                                       .getTotalSeconds();
+        local_tm.tm_zone = system_now.getZone()
+                                     .getId();
+        local_tm.tm_isdst = system_now.getZone()
+                                      .getRules()
+                                      .isDaylightSavings( system_now.toInstant() );
+        local_tm.tm_sec = system_now.getSecond();
+        local_tm.tm_min = system_now.getMinute();
+        local_tm.tm_hour = system_now.getHour();
+        local_tm.tm_mday = system_now.getDayOfMonth();
+        local_tm.tm_mon = system_now.getMonthValue() - 1;
+        local_tm.tm_year = system_now.getYear() - 1900;
+        local_tm.tm_wday = system_now.getDayOfWeek()
+                                     .getValue();
+        if( local_tm.tm_wday == 7 ) local_tm.tm_wday = 0;
+        local_tm.tm_yday = system_now.getDayOfYear() - 1;
+
+        return local_tm;
+    }
 }
