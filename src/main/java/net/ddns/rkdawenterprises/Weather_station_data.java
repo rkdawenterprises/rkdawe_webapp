@@ -31,7 +31,11 @@ public class Weather_station_data extends HttpServlet
         {
             try
             {
-                weather_data = Weather_station_access.get_instance().get_weather_data();
+                String latest_parameter = request.getParameter( "latest" );
+                if( latest_parameter == null ) latest_parameter = "false";
+                boolean latest = latest_parameter.equalsIgnoreCase("true");
+
+                weather_data = Weather_station_access.get_instance().get_weather_data( latest );
                 if( weather_data == null )
                 {
                     retries--;

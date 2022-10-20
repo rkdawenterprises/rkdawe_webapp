@@ -2,15 +2,9 @@
 package net.ddns.rkdawenterprises;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -21,41 +15,19 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import javax.management.InvalidAttributeValueException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-
-import org.json.JSONObject;
 
 import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Ints;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 
 import net.ddns.rkdawenterprises.Utilities.tm;
 
@@ -69,9 +41,14 @@ public final class Weather_station_access
     private static Weather_station_access s_instance = null;
 
     /**
-     * To prevent threading issues, always synchronize on this object.
+     * To prevent threading issues, always synchronize on this object for accessing weather station.
      */
     private Discovery_info m_discovery = null;
+
+    /**
+     * Keep a copy of the last obtained weather data from the station.
+     */
+    Weather_data m_last_weather_data = null;
 
     /**
      * Discovery information from the weather station.
@@ -174,14 +151,22 @@ public final class Weather_station_access
         }
     }
 
-    public Weather_data get_weather_data() throws IOException, InterruptedException, WSD_exception
+    public Weather_data get_weather_data( boolean latest ) throws IOException, InterruptedException, WSD_exception
     {
-        synchronized( m_discovery )
+        if( latest )
         {
-            if( m_discovery.host != null )
+            synchronized( m_discovery )
             {
-                return get_weather_data( m_discovery );
+                if( m_discovery.host != null )
+                {
+                    m_last_weather_data = get_weather_data( m_discovery );
+                    return m_last_weather_data;
+                }
             }
+        }
+        else
+        {
+            return m_last_weather_data;
         }
 
         return null;
@@ -1001,7 +986,7 @@ public final class Weather_station_access
         {
             try
             {
-                weather_data = get_weather_data();
+                weather_data = get_weather_data( true );
                 if( weather_data == null )
                 {
                     retries--;
