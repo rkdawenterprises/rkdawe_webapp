@@ -1,10 +1,1 @@
-
-package net.ddns.rkdawenterprises;
-
-public class WSD_exception extends Exception
-{
-    public WSD_exception( String error_message )
-    {
-        super( error_message );
-    }
-}
+../../../../../../../rkdawe_api_common/src/java/net/ddns/rkdawenterprises/WSD_exception.java
