@@ -1,5 +1,5 @@
 
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -29,7 +29,11 @@ import com.google.common.primitives.Bytes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import net.ddns.rkdawenterprises.Utilities.tm;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Check_CRC;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
+import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities.tm;
 
 /**
  * Singleton with synchronized access.

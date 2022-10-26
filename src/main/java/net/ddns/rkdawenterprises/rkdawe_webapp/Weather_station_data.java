@@ -1,5 +1,5 @@
 
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -14,6 +14,9 @@ import org.json.JSONObject;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
 
 @WebServlet( name = "Weather_station_data",
              description = "Returns weather data",

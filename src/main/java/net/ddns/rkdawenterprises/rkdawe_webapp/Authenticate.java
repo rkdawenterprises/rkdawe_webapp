@@ -1,5 +1,5 @@
 
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -23,6 +23,8 @@ import javax.servlet.http.HttpSession;
 
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 
 @WebServlet( name = "Authenticate",
              description = "Log in authentication servlet",

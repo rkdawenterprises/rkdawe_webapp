@@ -1,4 +1,4 @@
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;

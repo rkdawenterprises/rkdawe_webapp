@@ -1,11 +1,15 @@
 
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+
+import net.ddns.rkdawenterprises.rkdawe_api_common.Check_CRC;
+import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
 
 public class EEPROM
 {

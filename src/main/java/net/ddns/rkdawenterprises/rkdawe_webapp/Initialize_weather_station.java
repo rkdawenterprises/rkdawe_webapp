@@ -1,5 +1,5 @@
 
-package net.ddns.rkdawenterprises;
+package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,7 +19,9 @@ import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
-import net.ddns.rkdawenterprises.Utilities.ROUNDING_TYPE;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
+import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities.ROUNDING_TYPE;
 
 @WebServlet( name = "Initialize_weather_station",
              description = "Initialize weather station at server startup and upon request",
