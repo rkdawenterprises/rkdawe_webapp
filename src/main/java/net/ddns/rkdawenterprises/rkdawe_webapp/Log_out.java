@@ -12,7 +12,9 @@ import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
-@WebServlet( name = "Log_out", description = "Invalidates the current session", urlPatterns = { "/log_out" })
+@WebServlet( name = "Log_out",
+             description = "Invalidates the current session",
+             urlPatterns = { "/log_out" } )
 public class Log_out extends HttpServlet
 {
     private static final long serialVersionUID = 1L;

@@ -13,8 +13,6 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.FileAlreadyExistsException;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -22,8 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.management.InvalidAttributeValueException;
 
 import com.google.common.primitives.Bytes;
 import com.google.gson.Gson;
@@ -48,11 +44,6 @@ public final class Weather_station_access
      * To prevent threading issues, always synchronize on this object for accessing weather station.
      */
     private Discovery_info m_discovery = null;
-
-    /**
-     * Keep a copy of the last obtained weather data from the station.
-     */
-    Weather_data m_last_weather_data = null;
 
     /**
      * Discovery information from the weather station.
@@ -125,7 +116,7 @@ public final class Weather_station_access
             s_instance.m_discovery = new Discovery_info();
             try
             {
-                Weather_history.weather_record_file_maintenance();
+                // Weather_history.weather_record_file_maintenance();
             }
             catch( Exception exception )
             {
@@ -137,7 +128,7 @@ public final class Weather_station_access
         return s_instance;
     }
 
-    public void initialize() throws SocketException, UnknownHostException, WSD_exception, IOException
+    public void initialize() throws SocketException, UnknownHostException, WSD_exception, IOException, InterruptedException
     {
         synchronized( m_discovery )
         {
@@ -150,30 +141,16 @@ public final class Weather_station_access
                 test_verify( m_discovery );
                 System.out.println( "Verifying and updating weather station time..." );
                 verify_update_time( m_discovery );
+                System.out.println( "Get first weather data sample..." );
+                get_weather_data();
                 System.out.println( "Weather station initialization finished." );
             }
         }
     }
 
-    public Weather_data get_weather_data( boolean latest ) throws IOException, InterruptedException, WSD_exception
+    public Weather_data get_weather_data() throws IOException, InterruptedException, WSD_exception
     {
-        if( latest )
-        {
-            synchronized( m_discovery )
-            {
-                if( m_discovery.host != null )
-                {
-                    m_last_weather_data = get_weather_data( m_discovery );
-                    return m_last_weather_data;
-                }
-            }
-        }
-        else
-        {
-            return m_last_weather_data;
-        }
-
-        return null;
+        return get_weather_data( m_discovery );
     }
 
     /**
@@ -428,7 +405,6 @@ public final class Weather_station_access
             retries--;
             synchronize_time( in,
                               out );
-            // TODO: This probably blocks the whole server?
             Utilities.sleep( Duration.ofMillis( 1200 ) );
             difference = get_time_difference( in,
                                               out ).abs();
@@ -579,7 +555,6 @@ public final class Weather_station_access
                            expected_response_size ) != expected_response_size )
                     || ( receive_buffer[0] != '\n' ) || ( receive_buffer[1] != '\r' ) )
             {
-                // TODO: This probably blocks the whole server?
                 Utilities.sleep( Duration.ofMillis( 1200 ) );
                 continue;
             }
@@ -979,43 +954,5 @@ public final class Weather_station_access
         weather_data.firmware_version = s_firmware_version;
 
         return weather_data;
-    }
-
-    public void get_save_weather_record() throws FileAlreadyExistsException, AccessDeniedException,
-            InvalidAttributeValueException, UnsupportedOperationException, SecurityException, IOException, WSD_exception
-    {
-        Weather_data weather_data = null;
-        int retries = Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT;
-        do
-        {
-            try
-            {
-                weather_data = get_weather_data( true );
-                if( weather_data == null )
-                {
-                    retries--;
-                    continue;
-                }
-
-                break;
-            }
-            catch( Exception exception )
-            {
-                retries--;
-                System.err.format( "Weather_station_access: Issue getting data from weather station, retry %d of %d:%s%n",
-                                   Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT - retries,
-                                   Initialize_weather_station.DEFAULT_MAX_RETRY_COUNT,
-                                   exception );
-                continue;
-            }
-        }
-        while( retries > 0 );
-
-        if( ( weather_data == null ) || ( retries <= 0 ) )
-        {
-            throw new WSD_exception( "Weather_station_access: Issue getting data from weather station" );
-        }
-
-        Weather_history.save_weather_record( weather_data );
     }
 }

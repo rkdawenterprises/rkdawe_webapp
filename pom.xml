@@ -120,7 +120,8 @@
                     <artifactId>maven-war-plugin</artifactId>
                     <version>3.2.3</version>
                     <configuration>
-                        <outputDirectory>/usr/share/tomcat/webapps</outputDirectory>
+                        <!-- <outputDirectory>/usr/share/tomcat/webapps</outputDirectory> -->
+                        <outputDirectory>/home/rwilliamson/temp</outputDirectory>
                         <archive>
                             <manifestEntries>
                                 <SCM-Revision>${git.commit.time}.${git.commit.id.describe-short}</SCM-Revision>

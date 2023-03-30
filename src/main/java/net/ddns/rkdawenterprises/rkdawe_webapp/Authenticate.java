@@ -93,8 +93,6 @@ public class Authenticate extends HttpServlet
     {
         HttpSession session = request.getSession();
 
-        // TODO: Add timer for 3 log in attempts per hour?
-
         JSONObject response_JSON = new JSONObject();
 
         if( !request.getContentType()
@@ -109,6 +107,7 @@ public class Authenticate extends HttpServlet
         {
             String form_data_as_JSON_string = IOUtils.toString( request.getInputStream(),
                                                                 "UTF-8" );
+
             JSONObject form_data_as_JSON_object = new JSONObject( form_data_as_JSON_string );
             String username = form_data_as_JSON_object.getString( "username" );
             String password_encrypted_base64 = form_data_as_JSON_object.getString( "password_encrypted" );
@@ -249,7 +248,6 @@ public class Authenticate extends HttpServlet
                                            exception_string );
 
                         session.invalidate();
-                        // TODO: This probably blocks the whole server?
                         Utilities.sleep( DELAY_AFTER_INVALID_ATTEMPT );
                     }
                 }
@@ -274,7 +272,6 @@ public class Authenticate extends HttpServlet
                                    exception_string );
 
                 session.invalidate();
-                // TODO: This probably blocks the whole server?
                 Utilities.sleep( DELAY_AFTER_INVALID_ATTEMPT );
             }
         }

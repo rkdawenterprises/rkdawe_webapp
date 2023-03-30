@@ -12,7 +12,9 @@ import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
-@WebServlet( name = "Get_logged_in", description = "Returns session logged-in status", urlPatterns = { "/get_logged_in" })
+@WebServlet( name = "Get_logged_in",
+             description = "Returns session logged-in status",
+             urlPatterns = { "/get_logged_in" } )
 public class Get_logged_in extends HttpServlet
 {
     private static final long serialVersionUID = 1L;

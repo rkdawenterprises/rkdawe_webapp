@@ -10,5 +10,6 @@
             "alias": "package-with-clean",
             "command": "clean compile package"
         }
-    ]
+    ],
+    "java.compile.nullAnalysis.mode": "automatic"
 }
