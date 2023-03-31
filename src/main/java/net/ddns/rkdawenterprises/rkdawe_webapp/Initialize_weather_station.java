@@ -15,7 +15,7 @@ import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
-import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
+import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
 
 @WebServlet( name = "Initialize_weather_station",
@@ -29,7 +29,6 @@ public class Initialize_weather_station extends HttpServlet
     private String m_application_information = null;
 
     public static final int RESET_COUNTDOWN_MINUTES = 60;
-    private int m_reset_countdown_minutes;
 
     @Override
     public void init() throws ServletException
@@ -47,7 +46,7 @@ public class Initialize_weather_station extends HttpServlet
             throw new ServletException( exception.toString() );
         }
 
-        m_application_information = Utilities.get_pom_properties( getServletContext() );
+        m_application_information = Server_utilities.get_pom_properties( getServletContext() );
         System.out.println( "Initialize_weather_station: Application information:\n" + m_application_information );
         System.out.format( "Initialize_weather_station: Finished initializing weather station.%n" );
     }
@@ -128,7 +127,5 @@ public class Initialize_weather_station extends HttpServlet
     {
         Weather_station_access.get_instance()
                               .initialize();
-
-        m_reset_countdown_minutes = RESET_COUNTDOWN_MINUTES;
     }
 }

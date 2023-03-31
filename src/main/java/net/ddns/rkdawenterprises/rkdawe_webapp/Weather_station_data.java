@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
 
@@ -75,7 +76,7 @@ public class Weather_station_data extends HttpServlet
         }
         while( retries > 0 );
 
-        Utilities.reload_application( getServletContext() );
+        Server_utilities.reload_application( getServletContext() );
 
         throw new ServletException( "Failed to get weather data" );
     }

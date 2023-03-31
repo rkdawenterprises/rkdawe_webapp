@@ -24,6 +24,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 
 @WebServlet( name = "Authenticate",
@@ -154,7 +155,7 @@ public class Authenticate extends HttpServlet
                 {
                     try
                     {
-                        Utilities.authenticate( getServletContext(),
+                        Server_utilities.authenticate( getServletContext(),
                                                 username,
                                                 password,
                                                 user );
@@ -194,7 +195,7 @@ public class Authenticate extends HttpServlet
                         session.setAttribute( "invalid_attempts",
                                               user.invalid_attempts );
 
-                        Instant current_log_in = Utilities.update_last_log_in( getServletContext(),
+                        Instant current_log_in = Server_utilities.update_last_log_in( getServletContext(),
                                                                                user.id );
 
                         response_JSON.put( "current_log_in",
@@ -216,7 +217,7 @@ public class Authenticate extends HttpServlet
                             {
                                 ++user.invalid_attempts;
                                 /* Instant current_invalid_attempt = */
-                                Utilities.update_last_invalid_attempt( getServletContext(),
+                                Server_utilities.update_last_invalid_attempt( getServletContext(),
                                                                        user.id,
                                                                        user.invalid_attempts );
                                 // System.out.printf( " current_invalid_attempt: %s, invalid_attempts: %d%n",
