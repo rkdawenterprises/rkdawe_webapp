@@ -16,7 +16,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
-import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
 
 @WebServlet( name = "Weather_station_data",
