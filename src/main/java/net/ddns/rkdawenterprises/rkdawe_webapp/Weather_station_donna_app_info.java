@@ -10,8 +10,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.json.JSONObject;
-
 import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 
 @WebServlet( name = "Weather_station_donna_app_info",
