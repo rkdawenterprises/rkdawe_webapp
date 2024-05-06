@@ -29,7 +29,7 @@ import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 
 @WebServlet( name = "Authenticate",
              description = "Log in authentication servlet",
-             urlPatterns = { "/authenticate" } )
+             urlPatterns = { "/authenticate", API_paths.AUTHENTICATE_PATH } )
 public class Authenticate extends HttpServlet
 {
     public static final Duration DELAY_AFTER_INVALID_ATTEMPT = Duration.ofSeconds( 5 );
@@ -276,6 +276,8 @@ public class Authenticate extends HttpServlet
                 Utilities.sleep( DELAY_AFTER_INVALID_ATTEMPT );
             }
         }
+
+        session.removeAttribute( "private_key_base64");
 
         response.setContentType( "application/json" );
 

@@ -20,7 +20,7 @@ import net.ddns.rkdawenterprises.rkdawe_api_common.Weather_data;
 
 @WebServlet( name = "Weather_station_data",
              description = "Returns weather data",
-             urlPatterns = { "/weather_station_data" } )
+             urlPatterns = { "/weather_station_data", API_paths.WEATHER_STATION_DATA_PATH } )
 public class Weather_station_data extends HttpServlet
 {
     @Override
@@ -48,17 +48,17 @@ public class Weather_station_data extends HttpServlet
                 String weather_data_json_string = gson.toJson( weather_data );
                 JSONObject weather_data_json = new JSONObject( weather_data_json_string );
 
-                JSONObject json_response = new JSONObject();
-                json_response.put( "weather_data",
+                JSONObject response_JSON = new JSONObject();
+                response_JSON.put( "weather_data",
                                    weather_data_json );
 
-                json_response.put( "success",
+                response_JSON.put( "success",
                                    "true" );
 
                 response.setContentType( "application/json" );
 
                 PrintWriter out = response.getWriter();
-                out.print( json_response );
+                out.print( response_JSON );
                 out.close();
 
                 return;

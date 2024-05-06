@@ -20,14 +20,12 @@ import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
 
 @WebServlet( name = "Initialize_weather_station",
              description = "Initialize weather station at server startup and upon request",
-             urlPatterns = { "/initialize_weather_station" },
+             urlPatterns = { "/initialize_weather_station", API_paths.INITIALIZE_WEATHER_STATION_PATH },
              loadOnStartup = 1 )
 public class Initialize_weather_station extends HttpServlet
 {
     public static final int DEFAULT_MAX_RETRY_COUNT = 5;
-
     private String m_application_information = null;
-
     public static final int RESET_COUNTDOWN_MINUTES = 60;
 
     @Override
@@ -68,7 +66,7 @@ public class Initialize_weather_station extends HttpServlet
     {
         HttpSession session = request.getSession();
 
-        JSONObject json_response = new JSONObject();
+        JSONObject response_JSON = new JSONObject();
 
         String logged_in = (String)session.getAttribute( "logged_in" );
         if( ( logged_in != null ) && logged_in.equals( "true" ) )
@@ -81,30 +79,30 @@ public class Initialize_weather_station extends HttpServlet
             }
             catch( Exception e )
             {
-                json_response.put( "error",
+                response_JSON.put( "error",
                                    e.toString() );
-                json_response.put( "success",
+                response_JSON.put( "success",
                                    "false" );
 
                 response.setContentType( "application/json" );
 
                 PrintWriter out = response.getWriter();
-                out.print( json_response );
+                out.print( response_JSON );
                 out.close();
                 return;
             }
 
-            json_response.put( "success",
+            response_JSON.put( "success",
                                "true" );
 
             String[] application_information = m_application_information.split( System.lineSeparator() );
-            System.out.print(Arrays.toString(application_information));
+            System.out.print( Arrays.toString( application_information ) );
             for( String string : application_information )
             {
                 if( string.startsWith( "SCM-Revision: " ) )
                 {
                     String[] version_pair = string.split( ":" );
-                    json_response.put( "version",
+                    response_JSON.put( "version",
                                        version_pair[1].trim() );
                     break;
                 }
@@ -119,11 +117,12 @@ public class Initialize_weather_station extends HttpServlet
         response.setContentType( "application/json" );
 
         PrintWriter out = response.getWriter();
-        out.print( json_response );
+        out.print( response_JSON );
         out.close();
     }
 
-    private void initialize() throws SocketException, UnknownHostException, WSD_exception, IOException, InterruptedException
+    private void initialize()
+            throws SocketException, UnknownHostException, WSD_exception, IOException, InterruptedException
     {
         Weather_station_access.get_instance()
                               .initialize();

@@ -14,7 +14,7 @@ import org.json.JSONObject;
 
 @WebServlet( name = "Log_out",
              description = "Invalidates the current session",
-             urlPatterns = { "/log_out" } )
+             urlPatterns = { "/log_out", API_paths.LOG_OUT_PATH } )
 public class Log_out extends HttpServlet
 {
     private static final long serialVersionUID = 1L;
@@ -25,14 +25,14 @@ public class Log_out extends HttpServlet
         HttpSession session = request.getSession();
         session.invalidate();
 
-        JSONObject json_response = new JSONObject();
-        json_response.put( "logged_in", "false" );
-        json_response.put( "success", "true" );
+        JSONObject response_JSON = new JSONObject();
+        response_JSON.put( "logged_in", "false" );
+        response_JSON.put( "success", "true" );
 
         response.setContentType( "application/json" );
 
         PrintWriter out = response.getWriter();
-        out.print( json_response );
+        out.print( response_JSON );
         out.close();
     }
 }

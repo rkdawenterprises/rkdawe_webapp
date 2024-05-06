@@ -14,7 +14,7 @@ import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 
 @WebServlet( name = "Weather_station_donna_app_info",
              description = "Returns information regarding the Weather Station Donna App",
-             urlPatterns = { "/weather_station_donna_app_info" } )
+             urlPatterns = { "/weather_station_donna_app_info", API_paths.WEATHER_STATION_DONNA_APP_INFO_PATH } )
 public class Weather_station_donna_app_info extends HttpServlet
 {
     @Override
