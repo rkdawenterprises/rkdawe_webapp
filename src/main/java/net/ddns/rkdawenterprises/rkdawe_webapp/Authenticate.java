@@ -155,8 +155,7 @@ public class Authenticate extends HttpServlet
                 {
                     try
                     {
-                        Server_utilities.authenticate( getServletContext(),
-                                                username,
+                        Server_utilities.authenticate( username,
                                                 password,
                                                 user );
 
@@ -195,8 +194,7 @@ public class Authenticate extends HttpServlet
                         session.setAttribute( "invalid_attempts",
                                               user.invalid_attempts );
 
-                        Instant current_log_in = Server_utilities.update_last_log_in( getServletContext(),
-                                                                               user.id );
+                        Instant current_log_in = Server_utilities.update_last_log_in( user.id );
 
                         response_JSON.put( "current_log_in",
                                            current_log_in );
@@ -217,8 +215,7 @@ public class Authenticate extends HttpServlet
                             {
                                 ++user.invalid_attempts;
                                 /* Instant current_invalid_attempt = */
-                                Server_utilities.update_last_invalid_attempt( getServletContext(),
-                                                                       user.id,
+                                Server_utilities.update_last_invalid_attempt( user.id,
                                                                        user.invalid_attempts );
                                 // System.out.printf( " current_invalid_attempt: %s, invalid_attempts: %d%n",
                                 // current_invalid_attempt, user.invalid_attempts );

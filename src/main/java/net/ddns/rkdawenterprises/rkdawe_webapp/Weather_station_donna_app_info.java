@@ -3,6 +3,8 @@ package net.ddns.rkdawenterprises.rkdawe_webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -24,8 +26,7 @@ public class Weather_station_donna_app_info extends HttpServlet
     {
             try
             {
-                String app_info_as_string = Server_utilities.resource_file_to_string( "weather_station_donna_app_info.html",
-                                                                                      getServletContext() );
+                String app_info_as_string = Files.readString(Path.of("/opt/home/tomcat/weather_station_donna_app_info.html"));
 
                 response.setContentType( "text/html" );
 
