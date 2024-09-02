@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2023-2024 RKDAW Enterprises and Ralph Williamson.
+ *       email: rkdawenterprises@gmail.com
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package net.ddns.rkdawenterprises.rkdawe_webapp;
 
@@ -44,6 +59,17 @@ public class Weather_station_data extends HttpServlet
                 System.out.printf( "Weather data aquired @ %s%n",
                                    weather_data.time );
 
+                String forecast_location = request.getParameter( "forecast_location" );                   
+                if( forecast_location != null )
+                {
+                    System.out.printf( "Getting data for forecast_location = %s%n",
+                                       forecast_location );
+
+                    Weather_gov_data weather_gov_data = Forecast_weather_gov.get_forecast(forecast_location);
+
+                    weather_data.period_1_forecast_icon = weather_gov_data.gridpoints_forecast.properties.periods.get(0).icon;
+                }        
+                
                 Gson gson = new GsonBuilder().create();
                 String weather_data_json_string = gson.toJson( weather_data );
                 JSONObject weather_data_json = new JSONObject( weather_data_json_string );
