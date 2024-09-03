@@ -30,6 +30,8 @@ import org.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
+
 @WebServlet( name = "Get_API",
              description = "Returns URL paths for the RKDAWE API",
              urlPatterns = { API_paths.API_PATH } )

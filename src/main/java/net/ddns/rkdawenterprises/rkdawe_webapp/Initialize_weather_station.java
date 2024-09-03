@@ -32,6 +32,7 @@ import org.json.JSONObject;
 
 import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.WSD_exception;
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
 
 @WebServlet( name = "Initialize_weather_station",
              description = "Initialize weather station at server startup and upon request",

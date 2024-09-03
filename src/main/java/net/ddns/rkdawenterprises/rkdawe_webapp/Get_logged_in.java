@@ -28,6 +28,8 @@ import javax.servlet.http.HttpSession;
 
 import org.json.JSONObject;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
+
 @WebServlet( name = "Get_logged_in",
              description = "Returns session logged-in status",
              urlPatterns = { "/get_logged_in", API_paths.GET_LOGGED_IN_PATH } )

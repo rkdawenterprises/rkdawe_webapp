@@ -26,6 +26,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
+
 import org.json.JSONObject;
 
 @WebServlet( name = "Log_out",

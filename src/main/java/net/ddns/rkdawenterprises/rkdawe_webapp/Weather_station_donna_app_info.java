@@ -28,6 +28,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
 
 @WebServlet( name = "Weather_station_donna_app_info",
              description = "Returns information regarding the Weather Station Donna App",

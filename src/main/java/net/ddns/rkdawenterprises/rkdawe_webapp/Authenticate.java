@@ -42,6 +42,8 @@ import org.json.JSONObject;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Server_utilities;
 import net.ddns.rkdawenterprises.rkdawe_api_common.Utilities;
 
+import net.ddns.rkdawenterprises.rkdawe_api_common.API_paths;
+
 @WebServlet( name = "Authenticate",
              description = "Log in authentication servlet",
              urlPatterns = { "/authenticate", API_paths.AUTHENTICATE_PATH } )
