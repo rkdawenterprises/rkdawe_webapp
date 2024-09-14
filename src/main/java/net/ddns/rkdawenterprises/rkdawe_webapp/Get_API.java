@@ -41,7 +41,7 @@ public class Get_API extends HttpServlet
                           HttpServletResponse response ) throws ServletException, IOException
     {
         GsonBuilder gsonBuilder  = new GsonBuilder();
-        gsonBuilder.excludeFieldsWithModifiers(java.lang.reflect.Modifier.TRANSIENT);
+        // gsonBuilder.excludeFieldsWithModifiers(java.lang.reflect.Modifier.TRANSIENT);
         Gson gson = gsonBuilder.create();
         String paths_string = gson.toJson(new API_paths());
         JSONObject paths = new JSONObject(paths_string);
