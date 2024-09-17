@@ -68,6 +68,9 @@ public class Weather_station_data extends HttpServlet
 
                     Weather_gov_data weather_gov_data = Forecast_weather_gov.get_forecast(forecast_location);
 
+                    weather_data.forecast_location_coordinates = forecast_location;
+                    weather_data.forecast_location_city = weather_gov_data.city;
+                    weather_data.forecast_location_state = weather_gov_data.state;
                     weather_data.period_1_forecast_icon = weather_gov_data.gridpoints_forecast.properties.periods.get(0).icon;
                     weather_data.period_1_short_forecast = weather_gov_data.gridpoints_forecast.properties.periods.get(0).shortForecast;
                 }        
