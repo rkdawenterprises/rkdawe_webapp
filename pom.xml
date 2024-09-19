@@ -6,7 +6,7 @@
 
     <groupId>net.ddns.rkdawenterprises</groupId>
     <artifactId>ROOT</artifactId>
-    <version>POM.VERSION.NOT.SUPPORTED.USES.GIT.SEE.MANIFEST.MF.FOR.VERSION</version>
+    <version>POM.VERSION.NOT.SUPPORTED.USES.GIT.SEE.MANIFEST.MF.FOR.SCM.VERSION</version>
     <packaging>war</packaging>
 
     <name>RKDAW Enterprises Web API</name>

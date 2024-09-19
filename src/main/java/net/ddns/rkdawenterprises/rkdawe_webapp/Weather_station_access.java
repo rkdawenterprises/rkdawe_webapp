@@ -959,12 +959,6 @@ public final class Weather_station_access
 
         weather_data.time = DateTimeFormatter.ofPattern( "yyyy-MM-dd'T'HH:mm:ss'Z'" )
                                              .format( ZonedDateTime.now( ZoneId.of( "UTC" ) ) );
-        weather_data.heat_index_derived =
-            Weather_data.calculate_heat_index(weather_data.outside_temperature,
-                                              weather_data.outside_humidity);
-        weather_data.wind_chill_derived =
-            Weather_data.calculate_wind_chill(weather_data.outside_temperature,
-                                              weather_data.wind_speed );                                                                                           
         weather_data.wrd = s_wrd;
         weather_data.total_packets_received = s_total_packets_received;
         weather_data.total_packets_missed = s_total_packets_missed;
